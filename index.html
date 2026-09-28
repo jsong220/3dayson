@@ -8,7 +8,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a472a'/%3E%3Ctext x='32' y='47' font-size='40' text-anchor='middle' fill='white'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #070b09;
@@ -38,25 +38,82 @@
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
-        .hello {
+        .center-block {
             grid-row: 2;
             align-self: center;
-            font-size: clamp(1.4rem, 5.5vw, 2.6rem);
-            font-weight: 400;
-            letter-spacing: 0.02em;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
             padding: 0 24px;
+        }
+
+        /* --- Weather widget --- */
+        .weather {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            border: 1px solid rgba(74, 222, 128, 0.25);
+            border-radius: 999px;
+            background: rgba(74, 222, 128, 0.05);
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            font-size: 0.82rem;
+            letter-spacing: 0.02em;
+            color: var(--fg);
+            opacity: 0;
+            animation: fadeIn 0.8s ease-out 0.2s forwards;
+            text-align: center;
+            max-width: 90vw;
+        }
+        .weather .penguin {
+            font-size: 1.35rem;
+            line-height: 1;
+            filter: drop-shadow(0 0 6px rgba(74, 222, 128, 0.35));
+        }
+        .weather .label {
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            font-size: 0.6rem;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .weather .value {
+            font-weight: 500;
+            color: var(--fg);
+        }
+        .weather .value .temp {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .weather .value .sep {
+            color: var(--muted);
+            margin: 0 6px;
+        }
+        .weather .value .wind {
+            color: #93c5fd;
+        }
+
+        /* --- Hello --- */
+        .hello {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: clamp(2.4rem, 9vw, 4.25rem);
+            font-weight: 300;
+            letter-spacing: -0.02em;
+            text-align: center;
             min-height: 1.2em;
-            line-height: 1.4;
-            text-shadow: 0 0 12px rgba(74, 222, 128, 0.25);
+            line-height: 1.15;
+            text-shadow: 0 0 24px rgba(74, 222, 128, 0.18);
         }
 
         .hello .dots {
             display: inline-block;
-            width: 1.2em;
+            width: 1.5em;
             text-align: left;
         }
 
+        /* --- Menu --- */
         .menu {
             grid-row: 3;
             align-self: start;
@@ -66,7 +123,6 @@
             align-items: center;
         }
 
-        /* Static list — no scrolling, no snapping */
         .picker {
             position: relative;
             width: min(360px, 88vw);
@@ -114,7 +170,6 @@
         .opt.active.live small { color: var(--accent); }
         .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-        /* Cursor indicator on the left of the highlighted option */
         .opt::before {
             content: "";
             position: absolute;
@@ -136,60 +191,60 @@
             transform: scale(1);
         }
 
-        .hint {
-            margin-top: 18px;
-            font-size: 0.5rem;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--muted);
-            opacity: 0.7;
-        }
+        @keyframes fadeIn { to { opacity: 1; } }
 
         @media (max-height: 460px) {
             :root { --row: 52px; }
             .opt { font-size: 0.75rem; }
             .opt small { font-size: 0.45rem; }
-            .hello { font-size: 1.1rem; }
-            .hint { display: none; }
+            .hello { font-size: 2rem; }
+            .weather { font-size: 0.7rem; padding: 6px 12px; }
         }
 
         @media (prefers-reduced-motion: reduce) {
             .opt { transition: none; }
+            .weather { animation: none; opacity: 1; }
         }
     </style>
 </head>
 <body>
 
-    <h1 class="hello" id="hello" aria-label="Hello, you"></h1>
+    <div class="center-block">
+        <div class="weather" id="weather" aria-live="polite">
+            <span class="penguin" aria-hidden="true">🐧</span>
+            <div>
+                <span class="label">Antarctica · Today</span>
+                <span class="value" id="weatherValue">Loading…</span>
+            </div>
+        </div>
+
+        <h1 class="hello" id="hello" aria-label="Hello you"></h1>
+    </div>
 
     <nav class="menu" aria-label="Choose something to open">
         <div class="picker" id="picker" role="list">
-            <a class="opt" role="listitem" href="https://www.chess.com" target="_blank" rel="noopener noreferrer">Chess<small>Chess.com</small></a>
             <a class="opt" role="listitem" href="https://news.google.com" target="_blank" rel="noopener noreferrer">News<small>Google News</small></a>
             <a class="opt live" role="listitem" href="ko-blackjack.html">KO Blackjack<small>Card counting trainer</small></a>
+            <a class="opt" role="listitem" href="https://www.chess.com" target="_blank" rel="noopener noreferrer">Chess<small>Chess.com</small></a>
         </div>
-        <!-- <p class="hint" id="hint">Tap to open</p> -->
     </nav>
 
     <script>
         (function () {
             var picker = document.getElementById('picker');
             var opts = Array.prototype.slice.call(picker.querySelectorAll('.opt'));
-            var activeIndex = 2; // default highlight = KO Blackjack
+            var activeIndex = 0; // default highlight = News (first option)
 
-            // Set active highlight
             function setActive(i) {
                 activeIndex = i;
                 opts.forEach(function (o, idx) { o.classList.toggle('active', idx === i); });
             }
 
-            // Hover / focus → highlight
             opts.forEach(function (o, i) {
                 o.addEventListener('mouseenter', function () { setActive(i); });
                 o.addEventListener('focus', function () { setActive(i); });
             });
 
-            // Keyboard up/down navigation, Enter opens
             picker.addEventListener('keydown', function (e) {
                 if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                     e.preventDefault();
@@ -211,9 +266,9 @@
 
             setActive(activeIndex);
 
-            // --- Typewriter greeting with looping dots ---
+            /* --- Typewriter greeting, looping dots, no comma --- */
             var helloEl = document.getElementById('hello');
-            var text = 'Hello, you';
+            var text = 'Hello you';
             var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
             function renderHello(typed, dots) {
@@ -250,6 +305,63 @@
 
                 setTimeout(typeNext, 300);
             }
+
+            /* --- Antarctica weather (Amundsen-Scott South Pole Station) --- */
+            var weatherValueEl = document.getElementById('weatherValue');
+
+            function describeWeatherCode(code) {
+                if (code === 0) return 'Clear';
+                if (code >= 1 && code <= 3) return 'Cloudy';
+                if (code === 45 || code === 48) return 'Fog';
+                if (code >= 51 && code <= 57) return 'Drizzle';
+                if (code >= 61 && code <= 67) return 'Rain';
+                if (code >= 71 && code <= 77) return 'Snow';
+                if (code >= 80 && code <= 82) return 'Showers';
+                if (code >= 85 && code <= 86) return 'Snow showers';
+                if (code >= 95) return 'Thunderstorm';
+                return 'Cloudy';
+            }
+
+            function renderWeather(tempC, windKmh, code) {
+                var t = Math.round(tempC);
+                var w = Math.round(windKmh);
+                var desc = describeWeatherCode(code);
+                weatherValueEl.innerHTML =
+                    '<span class="temp">' + t + '°C</span>' +
+                    '<span class="sep">·</span>' +
+                    '<span>' + desc + '</span>' +
+                    '<span class="sep">·</span>' +
+                    '<span class="wind">' + w + ' km/h</span>';
+            }
+
+            function fetchWeather() {
+                var lat = -90;
+                var lon = 0;
+                var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat +
+                          '&longitude=' + lon +
+                          '&current=temperature_2m,wind_speed_10m,weather_code' +
+                          '&timezone=UTC';
+
+                fetch(url)
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data && data.current) {
+                            renderWeather(
+                                data.current.temperature_2m,
+                                data.current.wind_speed_10m,
+                                data.current.weather_code
+                            );
+                        } else {
+                            weatherValueEl.textContent = 'Unavailable';
+                        }
+                    })
+                    .catch(function () {
+                        weatherValueEl.textContent = 'Unavailable';
+                    });
+            }
+
+            fetchWeather();
+            setInterval(fetchWeather, 15 * 60 * 1000);
         })();
     </script>
 </body>
