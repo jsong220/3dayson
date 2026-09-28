@@ -135,6 +135,7 @@ const STATE = {
     carryPushes: true,     // pushed bets stay on the table and ride on the next hand
     pushPot: 0,            // total pushed money currently being carried
     penetration: 0.75,     // shoe is reshuffled once this fraction has been dealt
+    betSpread: 10,          // max bet units for the KO bet ramp (4, 6, 8, or 10)
     isAnimating: false,
     insuranceNet: 0,
     
@@ -966,28 +967,47 @@ function setupEventListeners() {
         rampModal.classList.remove('hidden');
     });
     document.getElementById('btnCloseRamp').addEventListener('click', () => rampModal.classList.add('hidden'));
+
+    document.querySelectorAll('.spread-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            STATE.betSpread = parseInt(btn.dataset.spread);
+            renderRampGuide();
+        });
+    });
 }
 
 // Bet ramp: 1 unit below the key count, scaling to 8 units at pivot (+4) + 4
-function getBetRamp(decks) {
+function getBetRamp(decks, maxBet) {
     const key = KEY_COUNTS[decks] !== undefined ? KEY_COUNTS[decks] : -4;
     const pivot = 4;
     const top = pivot + 4;
     const range = top - key;
+    const steps = maxBet - 2;
     const th = [];   // th[i] = lowest count for (i + 2) units
-    for (let u = 2; u <= 8; u++) th.push(key + Math.round(((u - 2) * range) / 6));
+    for (let u = 2; u <= maxBet; u++) th.push(key + Math.round(((u - 2) * range) / steps));
     const rows = [{ units: 1, min: -Infinity, max: th[0] - 1 }];
-    for (let u = 2; u <= 8; u++) {
-        rows.push({ units: u, min: th[u - 2], max: u === 8 ? Infinity : th[u - 1] - 1 });
+    for (let u = 2; u <= maxBet; u++) {
+        rows.push({ units: u, min: th[u - 2], max: u === maxBet ? Infinity : th[u - 1] - 1 });
     }
     return { key, pivot, irc: 4 - 4 * decks, rows };
 }
 
+function updateSpreadButtons() {
+    document.querySelectorAll('.spread-btn').forEach(btn => {
+        const active = parseInt(btn.dataset.spread) === STATE.betSpread;
+        btn.className = `spread-btn flex-1 py-2 rounded font-bold text-sm transition-colors ${active ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`;
+    });
+}
+
 function renderRampGuide() {
-    const r = getBetRamp(STATE.numDecks);
+    updateSpreadButtons();
+    const r = getBetRamp(STATE.numDecks, STATE.betSpread);
     const rc = STATE.koCount;
     const fmtC = n => (n > 0 ? `+${n}` : `${n}`);
     const current = r.rows.find(row => rc >= row.min && rc <= row.max);
+
+    const titleEl = document.getElementById('rampTitle');
+    if (titleEl) titleEl.innerText = `KO Bet Ramp (1-${STATE.betSpread} Units)`;
 
     document.getElementById('rampSummary').innerHTML = `
         <div class="grid grid-cols-3 gap-2 text-center mb-3">
@@ -996,7 +1016,7 @@ function renderRampGuide() {
             <div class="bg-gray-800 rounded p-2"><div class="text-[10px] text-gray-400 uppercase">Pivot</div><div class="font-bold text-green-400">${fmtC(r.pivot)}</div></div>
         </div>
         <div class="bg-emerald-900/60 border border-emerald-700 rounded p-3 text-center mb-3">
-            <div class="text-xs text-gray-300">Current KO count <span class="font-bold text-white">${fmtC(rc)}</span> (${STATE.numDecks} decks)</div>
+            <div class="text-xs text-gray-300">Current KO count <span class="font-bold text-white">${fmtC(rc)}</span> (${STATE.numDecks} decks, 1-${STATE.betSpread} spread)</div>
             <div class="text-lg font-black text-green-300">Bet ${current.units} unit${current.units > 1 ? 's' : ''}</div>
         </div>`;
 
@@ -1349,12 +1369,18 @@ init();
 <div id="rampModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
     <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-md mx-4 max-h-[85vh] flex flex-col">
         <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
-            <h2 class="text-xl font-bold text-white">KO Bet Ramp (1-8 Units)</h2>
+            <h2 id="rampTitle" class="text-xl font-bold text-white">KO Bet Ramp (1-8 Units)</h2>
             <button id="btnCloseRamp" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+        <div class="flex gap-2 mb-3">
+            <button class="spread-btn flex-1 py-2 rounded font-bold text-sm transition-colors" data-spread="4">1-4</button>
+            <button class="spread-btn flex-1 py-2 rounded font-bold text-sm transition-colors" data-spread="6">1-6</button>
+            <button class="spread-btn flex-1 py-2 rounded font-bold text-sm transition-colors" data-spread="8">1-8</button>
+            <button class="spread-btn flex-1 py-2 rounded font-bold text-sm transition-colors" data-spread="10">1-10</button>
         </div>
         <div id="rampSummary"></div>
         <div id="rampRows" class="flex-grow overflow-y-auto pr-2 space-y-2"></div>
-        <p class="text-[11px] text-gray-500 mt-3">Bet 1 unit below the key count, then scale up to 8 units as the count climbs past the pivot. Key count and pivot follow the standard KO tables for your deck setting; the step sizes are a scaled guide, so adjust to your bankroll and table limits.</p>
+        <p class="text-[11px] text-gray-500 mt-3">Bet 1 unit below the key count, then scale up as the count climbs past the pivot. Key count and pivot follow the standard KO tables for your deck setting; the step sizes are a scaled guide, so adjust to your bankroll and table limits.</p>
     </div>
 </div>
 
