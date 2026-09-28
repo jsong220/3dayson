@@ -86,13 +86,13 @@
     }
 
     @keyframes slideIn {
-      from { transform: translateY(100%); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+      from { transform: translate(-50%, 100%); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
     }
 
     @keyframes slideOut {
-      from { transform: translateY(0); opacity: 1; }
-      to { transform: translateY(100%); opacity: 0; }
+      from { transform: translate(-50%, 0); opacity: 1; }
+      to { transform: translate(-50%, 100%); opacity: 0; }
     }
 
     ::-webkit-scrollbar {
@@ -288,7 +288,7 @@
   </div>
   
   <div id="hintToast"
-    class="fixed bottom-[72px] left-1/2 transform -translate-x-1/2 bg-red-900/95 border border-red-500 text-white font-semibold px-4 py-2 rounded-lg shadow-xl hidden z-50 pointer-events-none text-sm w-[max-content] max-w-[90vw] text-center">
+    class="fixed bottom-[80px] left-1/2 transform -translate-x-1/2 bg-red-900/95 border border-red-500 text-white font-semibold px-4 py-2 rounded-lg shadow-xl hidden z-50 pointer-events-none text-sm w-[max-content] max-w-[90vw] text-center">
     <span id="hintText"></span>
   </div>
   <div id="insuranceModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
