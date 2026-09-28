@@ -48,7 +48,6 @@
             padding: 0 24px;
         }
 
-        /* --- Weather widget --- */
         .weather {
             display: flex;
             align-items: center;
@@ -95,7 +94,6 @@
             color: #93c5fd;
         }
 
-        /* --- Hello --- */
         .hello {
             font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             font-size: clamp(2.4rem, 9vw, 4.25rem);
@@ -113,7 +111,6 @@
             text-align: left;
         }
 
-        /* --- Menu --- */
         .menu {
             grid-row: 3;
             align-self: start;
@@ -233,7 +230,7 @@
         (function () {
             var picker = document.getElementById('picker');
             var opts = Array.prototype.slice.call(picker.querySelectorAll('.opt'));
-            var activeIndex = 0; // default highlight = News (first option)
+            var activeIndex = 0;
 
             function setActive(i) {
                 activeIndex = i;
@@ -266,7 +263,6 @@
 
             setActive(activeIndex);
 
-            /* --- Typewriter greeting, looping dots, no comma --- */
             var helloEl = document.getElementById('hello');
             var text = 'Hello you';
             var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -306,7 +302,6 @@
                 setTimeout(typeNext, 300);
             }
 
-            /* --- Antarctica weather (Amundsen-Scott South Pole Station) --- */
             var weatherValueEl = document.getElementById('weatherValue');
 
             function describeWeatherCode(code) {
@@ -322,16 +317,16 @@
                 return 'Cloudy';
             }
 
-            function renderWeather(tempC, windKmh, code) {
-                var t = Math.round(tempC);
-                var w = Math.round(windKmh);
+            function renderWeather(tempF, windMph, code) {
+                var t = Math.round(tempF);
+                var w = Math.round(windMph);
                 var desc = describeWeatherCode(code);
                 weatherValueEl.innerHTML =
-                    '<span class="temp">' + t + '°C</span>' +
+                    '<span class="temp">' + t + '°F</span>' +
                     '<span class="sep">·</span>' +
                     '<span>' + desc + '</span>' +
                     '<span class="sep">·</span>' +
-                    '<span class="wind">' + w + ' km/h</span>';
+                    '<span class="wind">' + w + ' mph</span>';
             }
 
             function fetchWeather() {
