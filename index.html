@@ -6,14 +6,16 @@
     <meta name="theme-color" content="#070b09">
     <title>Hello</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a472a'/%3E%3Ctext x='32' y='47' font-size='40' text-anchor='middle' fill='white'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #070b09;
             --fg: #f2f5f3;
             --muted: #6f7c75;
             --accent: #4ade80;
-            --row: 64px;    /* height of one option */
-            --view: 152px;  /* visible height of the picker (shows the middle option + a peek of its neighbours) */
+            --row: 64px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,10 +29,9 @@
                 radial-gradient(ellipse at 50% 42%, rgba(74, 222, 128, 0.07), transparent 60%),
                 var(--bg);
             color: var(--fg);
-            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            -webkit-font-smoothing: antialiased;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            -webkit-font-smoothing: none;
             -webkit-tap-highlight-color: transparent;
-            /* Three rows: the greeting sits in the exact middle row, the menu hangs underneath it */
             display: grid;
             grid-template-rows: 1fr auto 1fr;
             justify-items: center;
@@ -40,14 +41,20 @@
         .hello {
             grid-row: 2;
             align-self: center;
-            font-size: clamp(2.4rem, 9vw, 4.25rem);
-            font-weight: 300;
-            letter-spacing: -0.02em;
+            font-size: clamp(1.4rem, 5.5vw, 2.6rem);
+            font-weight: 400;
+            letter-spacing: 0.02em;
             text-align: center;
             padding: 0 24px;
-            opacity: 0;
-            transform: translateY(8px);
-            animation: rise 0.9s ease-out 0.15s forwards;
+            min-height: 1.2em;
+            line-height: 1.4;
+            text-shadow: 0 0 12px rgba(74, 222, 128, 0.25);
+        }
+
+        .hello .dots {
+            display: inline-block;
+            width: 1.2em;
+            text-align: left;
         }
 
         .menu {
@@ -57,30 +64,16 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            opacity: 0;
-            animation: fade 0.9s ease-out 0.9s forwards;
         }
 
-        /* Scrollable, snapping list. Scroll (wheel / swipe) to bring an option to the centre. */
+        /* Static list — no scrolling, no snapping */
         .picker {
             position: relative;
-            width: min(320px, 84vw);
-            height: var(--view);
-            overflow-y: auto;
-            scroll-snap-type: y mandatory;
-            overscroll-behavior: contain;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 27%, #000 73%, transparent 100%);
-                    mask-image: linear-gradient(to bottom, transparent 0, #000 27%, #000 73%, transparent 100%);
-        }
-        .picker::-webkit-scrollbar { display: none; }
-        /* Spacers so the first and last options can reach the centre */
-        .picker::before,
-        .picker::after {
-            content: "";
-            display: block;
-            height: calc((var(--view) - var(--row)) / 2);
+            width: min(360px, 88vw);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow: hidden;
         }
 
         .opt {
@@ -89,136 +82,174 @@
             align-items: center;
             justify-content: center;
             height: var(--row);
-            scroll-snap-align: center;
-            scroll-snap-stop: always;
             color: var(--muted);
             text-decoration: none;
-            font-size: 1.5rem;
+            font-size: 0.95rem;
             font-weight: 400;
-            letter-spacing: 0.01em;
-            transform: scale(0.86);
-            transition: color 0.25s ease, transform 0.25s ease;
-            border-radius: 14px;
+            letter-spacing: 0.05em;
+            transform: scale(0.94);
+            transition: color 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+            border-radius: 8px;
             cursor: pointer;
+            position: relative;
+            outline: none;
+            padding: 0 12px;
         }
         .opt small {
-            font-size: 0.68rem;
-            letter-spacing: 0.16em;
+            font-size: 0.55rem;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
-            margin-top: 3px;
+            margin-top: 6px;
             color: var(--muted);
             opacity: 0.85;
         }
-        .opt.active { color: var(--fg); transform: scale(1); }
-        .opt.active.live { color: var(--accent); }
-        .opt:hover { color: var(--fg); }
-        .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+        .opt.active,
+        .opt:hover,
+        .opt:focus-visible {
+            color: var(--fg);
+            transform: scale(1);
+            background-color: rgba(74, 222, 128, 0.08);
+        }
+        .opt.active.live,
+        .opt.active.live small { color: var(--accent); }
+        .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+        /* Cursor indicator on the left of the highlighted option */
+        .opt::before {
+            content: "";
+            position: absolute;
+            left: -16px;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            margin-top: -4px;
+            background: var(--accent);
+            opacity: 0;
+            transform: scale(0.5);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            box-shadow: 0 0 8px var(--accent);
+        }
+        .opt.active::before,
+        .opt:hover::before,
+        .opt:focus-visible::before {
+            opacity: 1;
+            transform: scale(1);
+        }
 
         .hint {
-            margin-top: 10px;
-            font-size: 0.72rem;
-            letter-spacing: 0.18em;
+            margin-top: 18px;
+            font-size: 0.5rem;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
             color: var(--muted);
-            transition: opacity 0.6s ease;
+            opacity: 0.7;
         }
-        .hint.gone { opacity: 0; }
 
-        .note {
-            margin-top: 6px;
-            min-height: 1.2em;        /* reserved so the layout never jumps */
-            font-size: 0.85rem;
-            color: var(--muted);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        .note.show { opacity: 1; }
-
-        @keyframes rise { to { opacity: 1; transform: none; } }
-        @keyframes fade { to { opacity: 1; } }
-
-        /* Short screens (phones in landscape): shrink the picker so nothing gets cut off */
         @media (max-height: 460px) {
-            :root { --row: 52px; --view: 104px; }
-            .opt { font-size: 1.25rem; }
-            .hello { font-size: 2rem; }
+            :root { --row: 52px; }
+            .opt { font-size: 0.75rem; }
+            .opt small { font-size: 0.45rem; }
+            .hello { font-size: 1.1rem; }
             .hint { display: none; }
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .hello, .menu { animation: none; opacity: 1; transform: none; }
-            .opt, .hint, .note { transition: none; }
+            .opt { transition: none; }
         }
     </style>
 </head>
 <body>
 
-    <h1 class="hello">Hello, you.</h1>
+    <h1 class="hello" id="hello" aria-label="Hello, you"></h1>
 
     <nav class="menu" aria-label="Choose something to open">
         <div class="picker" id="picker" role="list">
-            <!-- Options are normal links, so they still work if JavaScript is blocked. -->
-            <a class="opt" role="listitem" href="https://www.chess.com/home" data-soon="Chess">Chess<small>Coming soon</small></a>
-            <a class="opt" role="listitem" href="https://news.google.com/home?hl=en-US&gl=US&ceid=US:en" data-soon="News">News<small>Coming soon</small></a>
+            <a class="opt" role="listitem" href="https://www.chess.com" target="_blank" rel="noopener noreferrer">Chess<small>Chess.com</small></a>
+            <a class="opt" role="listitem" href="https://news.google.com" target="_blank" rel="noopener noreferrer">News<small>Google News</small></a>
             <a class="opt live" role="listitem" href="ko-blackjack.html">KO Blackjack<small>Card counting trainer</small></a>
         </div>
-        <p class="hint" id="hint">Scroll &middot; tap to open</p>
-        <p class="note" id="note" role="status" aria-live="polite"></p>
+        <!-- <p class="hint" id="hint">Tap to open</p> -->
     </nav>
 
     <script>
         (function () {
             var picker = document.getElementById('picker');
             var opts = Array.prototype.slice.call(picker.querySelectorAll('.opt'));
-            var hint = document.getElementById('hint');
-            var note = document.getElementById('note');
-            var activeIndex = 0;
-            var ticking = false;
-            var noteTimer = null;
-            var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var activeIndex = 2; // default highlight = KO Blackjack
 
-            // Highlight whichever option is closest to the middle of the picker
-            function updateActive() {
-                ticking = false;
-                var mid = picker.scrollTop + picker.clientHeight / 2;
-                var best = 0, bestDist = Infinity;
-                opts.forEach(function (o, i) {
-                    var d = Math.abs(o.offsetTop + o.offsetHeight / 2 - mid);
-                    if (d < bestDist) { bestDist = d; best = i; }
-                });
-                activeIndex = best;
-                opts.forEach(function (o, i) { o.classList.toggle('active', i === best); });
+            // Set active highlight
+            function setActive(i) {
+                activeIndex = i;
+                opts.forEach(function (o, idx) { o.classList.toggle('active', idx === i); });
             }
 
-            picker.addEventListener('scroll', function () {
-                hint.classList.add('gone');
-                if (!ticking) { ticking = true; requestAnimationFrame(updateActive); }
-            }, { passive: true });
-            window.addEventListener('resize', updateActive);
-            window.addEventListener('load', updateActive);
-            updateActive();
-
-            // "Coming soon" options: stay on the page and say so
-            opts.forEach(function (o) {
-                o.addEventListener('click', function (e) {
-                    var name = o.getAttribute('data-soon');
-                    if (!name) return;                       // KO Blackjack: let the link navigate normally
-                    e.preventDefault();
-                    note.textContent = name + ' is coming soon.';
-                    note.classList.add('show');
-                    clearTimeout(noteTimer);
-                    noteTimer = setTimeout(function () { note.classList.remove('show'); }, 2200);
-                });
+            // Hover / focus → highlight
+            opts.forEach(function (o, i) {
+                o.addEventListener('mouseenter', function () { setActive(i); });
+                o.addEventListener('focus', function () { setActive(i); });
             });
 
-            // Keyboard: up / down moves through the options
+            // Keyboard up/down navigation, Enter opens
             picker.addEventListener('keydown', function (e) {
-                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-                e.preventDefault();
-                var next = Math.max(0, Math.min(opts.length - 1, activeIndex + (e.key === 'ArrowDown' ? 1 : -1)));
-                opts[next].focus({ preventScroll: true });
-                opts[next].scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    var next = Math.max(0, Math.min(opts.length - 1, activeIndex + (e.key === 'ArrowDown' ? 1 : -1)));
+                    setActive(next);
+                    opts[next].focus();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    var target = opts[activeIndex];
+                    if (target) {
+                        if (target.target === '_blank') {
+                            window.open(target.href, '_blank', 'noopener,noreferrer');
+                        } else {
+                            window.location.href = target.href;
+                        }
+                    }
+                }
             });
+
+            setActive(activeIndex);
+
+            // --- Typewriter greeting with looping dots ---
+            var helloEl = document.getElementById('hello');
+            var text = 'Hello, you';
+            var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            function renderHello(typed, dots) {
+                helloEl.innerHTML = typed + '<span class="dots">' + '.'.repeat(dots) + '</span>';
+            }
+
+            if (reduceMotion) {
+                renderHello(text, 3);
+            } else {
+                var i = 0;
+                renderHello('', 0);
+
+                function typeNext() {
+                    if (i < text.length) {
+                        i++;
+                        renderHello(text.slice(0, i), 0);
+                        setTimeout(typeNext, 90);
+                    } else {
+                        startDots();
+                    }
+                }
+
+                var dotCount = 1;
+                var dotDir = 1;
+                function startDots() {
+                    renderHello(text, dotCount);
+                    setTimeout(function () {
+                        dotCount += dotDir;
+                        if (dotCount >= 3) { dotCount = 3; dotDir = -1; }
+                        else if (dotCount <= 1) { dotCount = 1; dotDir = 1; }
+                        startDots();
+                    }, 400);
+                }
+
+                setTimeout(typeNext, 300);
+            }
         })();
     </script>
 </body>
