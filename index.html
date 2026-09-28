@@ -64,6 +64,22 @@
         ::-webkit-scrollbar-track { background: #1f2937; }
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        /* Action buttons: equal width, always centered (wrap stays centered too) */
+        .act-btn { flex: 1 1 60px; max-width: 110px; min-width: 0; }
+
+        /* Doubled-down card is dealt sideways */
+        .double-wrap { width: 112px; height: 80px; position: relative; flex-shrink: 0; margin-left: -16px; align-self: flex-end; }
+        .double-wrap:first-child { margin-left: 0; }
+        .double-wrap .playing-card { position: absolute; top: 50%; left: 50%; margin: 0; transform: translate(-50%, -50%) rotate(90deg); }
+        .double-wrap .playing-card.card-deal-side { animation: cardDealSide 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes cardDealSide {
+            from { transform: translate(-50%, -50%) translateX(-40px) rotate(90deg) scale(0.8); opacity: 0; }
+            to   { transform: translate(-50%, -50%) rotate(90deg) scale(1); opacity: 1; }
+        }
+        @media (max-width: 640px) {
+            .double-wrap { width: 84px; height: 60px; margin-left: -12px; }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -115,14 +131,25 @@ const STATE = {
     allowSurrender: true,
     allowDAS: true,
     enableDeviations: true,
+    dealerHitsS17: true,   // true = H17, false = S17
+    penetration: 0.75,     // shoe is reshuffled once this fraction has been dealt
+    isAnimating: false,
+    insuranceNet: 0,
     
     // Session Stats
     stats: {
         totalMoves: 0,
         correctMoves: 0,
-        handsPlayed: 0
+        handsPlayed: 0,
+        netEarnings: 0,
+        wins: 0,
+        losses: 0,
+        pushes: 0
     }
 };
+const SESSION_ID = 'session_' + Date.now();
+const MAX_HANDS = 4;
+const KEY_COUNTS = { 1: 2, 2: 1, 4: -1, 6: -4, 8: -6 };
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -162,7 +189,7 @@ const STRATEGY = {
         15: ['Hit','Hit','Double','Double','Double','Hit','Hit','Hit','Hit','Hit'],
         16: ['Hit','Hit','Double','Double','Double','Hit','Hit','Hit','Hit','Hit'],
         17: ['Hit','Double','Double','Double','Double','Hit','Hit','Hit','Hit','Hit'],
-        18: ['Stand','Double','Double','Double','Double','Stand','Stand','Hit','Hit','Hit'],
+        18: ['Stand','Ds','Ds','Ds','Ds','Stand','Stand','Hit','Hit','Hit'],
         19: ['Stand','Stand','Stand','Stand','Stand','Stand','Stand','Stand','Stand','Stand'],
         20: ['Stand','Stand','Stand','Stand','Stand','Stand','Stand','Stand','Stand','Stand'],
         21: ['Stand','Stand','Stand','Stand','Stand','Stand','Stand','Stand','Stand','Stand']
@@ -186,6 +213,7 @@ function init() {
     setupEventListeners();
     applySettings();
     initializeDeck();
+    updateStatsUI();
 
     if (auth) {
         authenticateUser();
@@ -288,12 +316,14 @@ function shuffleDeck() {
 }
 
 function drawCard(hidden = false) {
-    if (STATE.deck.length < 15) {
+    if (STATE.deck.length === 0) {
+        // Emergency only: normal reshuffles happen between hands at the cut card
+        initializeDeck();
         showMessage("Reshuffling shoe...", "text-yellow-400");
-        setTimeout(initializeDeck, 1500);
     }
     const card = STATE.deck.pop();
     if (!hidden) updateCount(card.countVal);
+    else updateTrackerUI();
     return { ...card, hidden };
 }
 
@@ -309,6 +339,14 @@ function calculateHand(cards) {
     return { sum, isSoft: aces > 0 && sum <= 21 };
 }
 
+// --- Money / colour helpers ---
+function fmtMoney(n, withPlus = true) {
+    const abs = Math.abs(n);
+    const t = Number.isInteger(abs) ? abs : abs.toFixed(2);
+    return `${n < 0 ? '-' : (withPlus && n > 0 ? '+' : '')}$${t}`;
+}
+function netColor(n) { return n > 0 ? 'text-green-400' : (n < 0 ? 'text-red-400' : 'text-gray-300'); }
+
 // --- STREAMING_CHUNK:Implementing game rule evaluations... ---
 function getCorrectAction(handObj, dealerUpcard, isInsuranceCheck = false) {
     if (isInsuranceCheck) {
@@ -316,42 +354,59 @@ function getCorrectAction(handObj, dealerUpcard, isInsuranceCheck = false) {
     }
 
     const hand = handObj.cards || [];
-    let dIdx = dealerUpcard.numVal - 2;
+    const up = dealerUpcard.numVal;
+    let dIdx = up - 2;
     if (dIdx < 0) dIdx = 9;
-    
+
     const hVal = calculateHand(hand);
+    const h17 = STATE.dealerHitsS17;
     const canDouble = hand.length === 2 && !(handObj.fromSplit && !STATE.allowDAS);
     const canSurrender = STATE.allowSurrender && hand.length === 2 && !handObj.fromSplit;
-    const canSplit = hand.length === 2 && hand[0].numVal === hand[1].numVal;
-    
+    const canSplit = hand.length === 2 && hand[0].numVal === hand[1].numVal && STATE.playerHands.length < MAX_HANDS;
+
+    // KO deviations (hard totals only)
     if (STATE.enableDeviations && !hVal.isSoft) {
-        if (hVal.sum === 16 && dealerUpcard.numVal === 10 && STATE.koCount >= 0) return 'Stand';
-        if (hVal.sum === 15 && dealerUpcard.numVal === 10 && STATE.koCount >= 4) return 'Stand';
-        if (hVal.sum === 12 && (dealerUpcard.numVal === 2 || dealerUpcard.numVal === 3) && STATE.koCount >= 0) return 'Stand';
-        if (hVal.sum === 11 && dealerUpcard.numVal === 11 && STATE.koCount >= 4) return canDouble ? 'Double' : 'Hit';
-        if (hVal.sum === 10 && (dealerUpcard.numVal === 10 || dealerUpcard.numVal === 11) && STATE.koCount >= 4) return canDouble ? 'Double' : 'Hit';
+        const isEights = canSplit && hand[0].numVal === 8;
+        if (hVal.sum === 16 && up === 10 && STATE.koCount >= 0 && !isEights) return 'Stand';
+        if (hVal.sum === 15 && up === 10 && STATE.koCount >= 4) return 'Stand';
+        if (hVal.sum === 12 && (up === 2 || up === 3) && STATE.koCount >= 0) return 'Stand';
+        if (hVal.sum === 11 && up === 11 && STATE.koCount >= 4) return canDouble ? 'Double' : 'Hit';
+        if (hVal.sum === 10 && (up === 10 || up === 11) && STATE.koCount >= 4) return canDouble ? 'Double' : 'Hit';
     }
 
-    let action = 'Hit';
+    // Pairs
     if (canSplit) {
-        let pairSum = hand[0].numVal * 2;
-        action = STRATEGY.pair[pairSum][dIdx];
-        if (action === 'Split') {
-             if (!STATE.allowDAS && (pairSum === 4 || pairSum === 6 || pairSum === 12)) action = 'Hit';
-             else return 'Split';
+        const pairSum = hand[0].numVal * 2;
+        const pa = STRATEGY.pair[pairSum][dIdx];
+        if (pa === 'Split') {
+            const noDasBlock = !STATE.allowDAS && ((pairSum <= 6 && up <= 3) || pairSum === 8 || (pairSum === 12 && up === 2));
+            if (!noDasBlock) return 'Split';
+        } else if (pa === 'Surrender') {
+            if (canSurrender && !(!h17 && up === 11)) return 'Surrender';
+            return 'Split';
         }
     }
 
-    if (hVal.isSoft && action === 'Hit') {
-        action = STRATEGY.soft[hVal.sum][dIdx] || 'Hit';
-    } else if (action === 'Hit' || action === 'Split') {
-        let hSum = Math.min(21, Math.max(5, hVal.sum));
+    // Soft / hard lookup (works for any number of cards)
+    let action;
+    if (hVal.isSoft) {
+        action = (STRATEGY.soft[hVal.sum] || [])[dIdx] || 'Hit';
+        if (h17 && hVal.sum === 18 && up === 2) action = 'Ds';
+        if (h17 && hVal.sum === 19 && up === 6) action = 'Ds';
+    } else {
+        const hSum = Math.min(21, Math.max(5, hVal.sum));
         action = STRATEGY.hard[hSum][dIdx] || 'Hit';
+        if (!h17 && hSum === 11 && up === 11) action = 'Hit';                          // S17: hit 11 vs A
+        if (!h17 && hSum === 15 && up === 11) action = 'Hit';                          // S17: no surrender 15 vs A
+        if (!h17 && hSum === 17 && up === 11) action = 'Stand';                        // S17: no surrender 17 vs A
     }
 
-    if (action === 'Surrender') return canSurrender ? 'Surrender' : 'Hit';
+    if (action === 'Surrender') {
+        if (canSurrender) return 'Surrender';
+        return (!hVal.isSoft && hVal.sum >= 17) ? 'Stand' : 'Hit';
+    }
     if (action === 'Double') return canDouble ? 'Double' : 'Hit';
-
+    if (action === 'Ds') return canDouble ? 'Double' : 'Stand';   // double, otherwise stand (e.g. soft 18 with 3+ cards)
     return action;
 }
 
@@ -379,58 +434,80 @@ function processMove(intendedAction) {
     return true;
 }
 
+function actionLocked() { return STATE.isGameOver || STATE.isAnimating; }
+
+// Pause briefly so the last card animation is visible, then move on
+function advanceAfter(ms) {
+    STATE.isAnimating = true;
+    updateControls();
+    setTimeout(() => { STATE.isAnimating = false; nextHandOrDealer(); }, ms);
+}
+
 function hit() {
-    if (!processMove('Hit')) return;
-    let h = STATE.playerHands[STATE.currentHandIndex];
+    if (actionLocked() || !processMove('Hit')) return;
+    const idx = STATE.currentHandIndex;
+    const h = STATE.playerHands[idx];
     h.cards.push(drawCard());
-    if (calculateHand(h.cards).sum >= 21) {
-        h.isBust = calculateHand(h.cards).sum > 21;
+    renderTable(`player-${idx}`);
+    const sum = calculateHand(h.cards).sum;
+    if (sum >= 21) {
+        h.isBust = sum > 21;
         h.isStand = true;
-        nextHandOrDealer();
+        advanceAfter(450);
     } else {
-        renderTable(); updateControls();
+        updateControls();
     }
 }
 
 function stand() {
-    if (!processMove('Stand')) return;
+    if (actionLocked() || !processMove('Stand')) return;
     STATE.playerHands[STATE.currentHandIndex].isStand = true;
     nextHandOrDealer();
 }
 
 function double() {
-    if (!processMove('Double')) return;
-    let h = STATE.playerHands[STATE.currentHandIndex];
+    if (actionLocked() || !processMove('Double')) return;
+    const idx = STATE.currentHandIndex;
+    const h = STATE.playerHands[idx];
     h.doubled = true; h.bet *= 2;
     h.cards.push(drawCard());
     h.isBust = calculateHand(h.cards).sum > 21;
     h.isStand = true;
-    nextHandOrDealer();
+    renderTable(`player-${idx}`);   // last card renders sideways
+    advanceAfter(700);
 }
 
 function split() {
-    if (!processMove('Split')) return;
-    let h = STATE.playerHands[STATE.currentHandIndex];
-    let cardToMove = h.cards.pop();
-    
-    let newHand = { cards: [cardToMove, drawCard()], bet: h.bet, isBust: false, isStand: false, doubled: false, fromSplit: true };
-    h.cards.push(drawCard());
+    if (actionLocked() || !processMove('Split')) return;
+    const idx = STATE.currentHandIndex;
+    const h = STATE.playerHands[idx];
+    const moved = h.cards.pop();
+    const newHand = { cards: [moved], bet: h.bet, isBust: false, isStand: false, doubled: false, isSurrendered: false, fromSplit: true };
     h.fromSplit = true;
-    
-    STATE.playerHands.push(newHand);
-    
-    if (h.cards[0].value === 'A') {
-         h.isStand = true; newHand.isStand = true;
-         nextHandOrDealer();
-    } else {
-        if (calculateHand(h.cards).sum === 21) h.isStand = true;
+    STATE.playerHands.splice(idx + 1, 0, newHand);
+
+    STATE.isAnimating = true;
+    renderTable(); updateControls();   // shows the two single cards side by side
+
+    const c1 = drawCard();
+    const c2 = drawCard();
+    setTimeout(() => { h.cards.push(c1); renderTable(`player-${idx}`); }, 400);
+    setTimeout(() => { newHand.cards.push(c2); renderTable(`player-${idx + 1}`); }, 850);
+    setTimeout(() => {
+        STATE.isAnimating = false;
+        if (h.cards[0].value === 'A') {
+            h.isStand = true; newHand.isStand = true;   // one card only on split aces
+        } else {
+            if (calculateHand(h.cards).sum === 21) h.isStand = true;
+            if (calculateHand(newHand.cards).sum === 21) newHand.isStand = true;
+        }
         if (h.isStand) nextHandOrDealer();
         else { renderTable(); updateControls(); }
-    }
+    }, 1300);
 }
 
 function surrender() {
-    if (!processMove('Surrender')) return;
+    if (actionLocked() || !processMove('Surrender')) return;
     let h = STATE.playerHands[STATE.currentHandIndex];
     h.isSurrendered = true;
     h.isStand = true;
@@ -451,9 +528,14 @@ function nextHandOrDealer() {
     }
 }
 
+function isNatural(h) {
+    return STATE.playerHands.length === 1 && h.cards.length === 2 && !h.fromSplit && calculateHand(h.cards).sum === 21;
+}
+
 // --- STREAMING_CHUNK:Managing dealer round resolution... ---
 function dealerTurn() {
     STATE.isGameOver = true;
+    STATE.isAnimating = false;
     updateControls();
     
     if (STATE.dealerCards[1] && STATE.dealerCards[1].hidden) {
@@ -462,16 +544,17 @@ function dealerTurn() {
     }
     renderTable();
 
-    const allDone = STATE.playerHands.every(h => h.isBust || h.isSurrendered);
+    const allDone = STATE.playerHands.every(h => h.isBust || h.isSurrendered || isNatural(h));
     
     if (!allDone) {
         let dVal = calculateHand(STATE.dealerCards);
+        const mustHit = v => v.sum < 17 || (v.sum === 17 && v.isSoft && STATE.dealerHitsS17);
         const playLoop = () => {
-            if (dVal.sum < 17 || (dVal.sum === 17 && dVal.isSoft)) {
+            if (mustHit(dVal)) {
                 setTimeout(() => {
                     STATE.dealerCards.push(drawCard());
                     dVal = calculateHand(STATE.dealerCards);
-                    renderTable();
+                    renderTable('dealer');
                     playLoop();
                 }, 800);
             } else {
@@ -484,27 +567,54 @@ function dealerTurn() {
     }
 }
 
-async function resolveGame() {
-    let dVal = calculateHand(STATE.dealerCards);
-    let h = STATE.playerHands[0];
-    let msg = ""; let col = "text-yellow-400";
+function evaluateHand(h, dCards) {
+    const dSum = calculateHand(dCards).sum;
+    const dBJ = dCards.length === 2 && dSum === 21;
+    if (h.isSurrendered) return { key: 'surrender', word: 'Surrender', label: 'Surrendered', net: -h.bet / 2 };
+    if (h.isBust)        return { key: 'loss', word: 'Bust', label: 'Player Busts', net: -h.bet };
+    const pSum = calculateHand(h.cards).sum;
+    const pBJ = isNatural(h);
+    if (pBJ && dBJ) return { key: 'push', word: 'Push', label: 'Push - Both Blackjack', net: 0 };
+    if (pBJ)        return { key: 'win', word: 'Blackjack', label: 'Blackjack! Pays 3:2', net: h.bet * 1.5 };
+    if (dBJ)        return { key: 'loss', word: 'Loss', label: 'Dealer Blackjack', net: -h.bet };
+    if (dSum > 21)  return { key: 'win', word: 'Win', label: 'Dealer Busts! You Win!', net: h.bet };
+    if (pSum > dSum) return { key: 'win', word: 'Win', label: 'You Win!', net: h.bet };
+    if (pSum < dSum) return { key: 'loss', word: 'Loss', label: 'Dealer Wins', net: -h.bet };
+    return { key: 'push', word: 'Push', label: 'Push', net: 0 };
+}
 
-    if (STATE.playerHands.length === 1) {
-        if (h.isSurrendered) { msg = "Surrendered"; col = "text-gray-400"; }
-        else if (h.isBust) { msg = "Player Busts!"; col = "text-red-500"; }
-        else if (dVal.sum > 21) { msg = "Dealer Busts! Win!"; col = "text-green-400"; }
-        else if (calculateHand(h.cards).sum > dVal.sum) { msg = "You Win!"; col = "text-green-400"; }
-        else if (calculateHand(h.cards).sum < dVal.sum) { msg = "Dealer Wins!"; col = "text-red-500"; }
-        else { msg = "Push"; col = "text-gray-300"; }
+async function resolveGame() {
+    const results = STATE.playerHands.map(h => evaluateHand(h, STATE.dealerCards));
+    results.forEach((r, i) => { STATE.playerHands[i].result = r; });
+
+    const insNet = STATE.insuranceNet || 0;
+    const roundNet = results.reduce((sum, r) => sum + r.net, 0) + insNet;
+
+    results.forEach(r => {
+        if (r.net > 0) STATE.stats.wins++;
+        else if (r.net < 0) STATE.stats.losses++;
+        else STATE.stats.pushes++;
+    });
+    STATE.stats.netEarnings += roundNet;
+    STATE.insuranceNet = 0;
+
+    if (results.length === 1) {
+        const r = results[0];
+        let msg = `${r.label} ${fmtMoney(r.net)}`;
+        if (insNet !== 0) msg += `  |  Insurance ${fmtMoney(insNet)}`;
+        showMessage(msg, netColor(roundNet));
     } else {
-         msg = "Hands Resolved."; 
+        const parts = results.map((r, i) =>
+            `<span class="${netColor(r.net)} font-bold whitespace-nowrap">Hand ${i + 1}: ${r.word} ${fmtMoney(r.net)}</span>`).join('');
+        const insLine = insNet !== 0 ? `<span class="text-gray-300 whitespace-nowrap">Insurance ${fmtMoney(insNet)}</span>` : '';
+        showMessageHtml(`
+            <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-base md:text-lg">${parts}${insLine}</div>
+            <div class="text-sm mt-1 ${netColor(roundNet)}">Round net: ${fmtMoney(roundNet)}</div>`);
     }
-    
+
     STATE.stats.handsPlayed++;
     updateStatsUI();
     saveSessionStats();
-
-    showMessage(msg, col);
     renderTable();
     setTimeout(() => {
         document.getElementById('actionControls').classList.add('hidden');
@@ -536,17 +646,14 @@ function handleInsurance(takesInsurance) {
         updateStatsUI();
     }
     
-    let dVal = calculateHand([STATE.dealerCards[0], {numVal: STATE.dealerCards[1].numVal, value: STATE.dealerCards[1].value}]);
-    if (dVal.sum === 21) {
-        showMessage(takesInsurance ? "Dealer Blackjack - Insurance Pays!" : "Dealer Blackjack", takesInsurance ? "text-green-400" : "text-red-500");
-        STATE.dealerCards[1].hidden = false;
-        updateCount(STATE.dealerCards[1].countVal);
-        STATE.isGameOver = true;
-        renderTable();
-        setTimeout(() => {
-            document.getElementById('actionControls').classList.add('hidden');
-            document.getElementById('postGameControls').classList.remove('hidden');
-        }, 1500);
+    const dealerBJ = STATE.dealerCards[0].numVal + STATE.dealerCards[1].numVal === 21;
+    const half = STATE.playerHands[0].bet / 2;
+    STATE.insuranceNet = takesInsurance ? (dealerBJ ? half * 2 : -half) : 0;
+
+    if (dealerBJ) {
+        showMessage("Dealer has Blackjack", "text-red-400");
+        STATE.isAnimating = true; updateControls();
+        setTimeout(dealerTurn, 900);
     } else {
         showMessage(takesInsurance ? "No Blackjack. Insurance lost." : "No Blackjack.", takesInsurance ? "text-red-400" : "text-gray-300");
         setTimeout(hideMessage, 1500);
@@ -554,15 +661,17 @@ function handleInsurance(takesInsurance) {
     }
 }
 
-function renderCard(card, isNew = false) {
+function renderCard(card, isNew = false, sideways = false) {
     if (card.hidden) return `<div class="playing-card hidden-card card-overlap"></div>`;
-    return `
-        <div class="playing-card ${card.isRed ? 'red' : 'black'} card-overlap ${isNew ? 'card-deal-anim' : ''}">
+    const anim = isNew ? (sideways ? 'card-deal-side' : 'card-deal-anim') : '';
+    const face = `
+        <div class="playing-card ${card.isRed ? 'red' : 'black'} ${sideways ? '' : 'card-overlap'} ${anim}">
             <div class="leading-none text-left">${card.value}</div>
             <div class="text-3xl text-center flex-grow flex items-center justify-center">${card.suit}</div>
             <div class="leading-none text-right rotate-180">${card.value}</div>
         </div>
     `;
+    return sideways ? `<div class="double-wrap">${face}</div>` : face;
 }
 
 function renderTable(newCardTarget = null) {
@@ -581,6 +690,7 @@ function renderTable(newCardTarget = null) {
 
     const pHandsEl = document.getElementById('playerHandsContainer');
     pHandsEl.innerHTML = '';
+    const multi = STATE.playerHands.length > 1;
     STATE.playerHands.forEach((h, i) => {
         let val = calculateHand(h.cards);
         let vText = val.isSoft ? `${val.sum} (Soft)` : val.sum;
@@ -590,16 +700,24 @@ function renderTable(newCardTarget = null) {
         let hl = i === STATE.currentHandIndex && !STATE.isGameOver ? 'ring-4 ring-yellow-400 rounded-xl p-2 bg-black/30' : 'p-2 opacity-90';
         
         let cardsHtml = h.cards.map((c, cIdx) => {
-            let isNew = (newCardTarget === `player-${i}` && cIdx === h.cards.length - 1);
-            return renderCard(c, isNew);
+            const isLast = cIdx === h.cards.length - 1;
+            const isNew = (newCardTarget === `player-${i}` && isLast);
+            const sideways = h.doubled && isLast && h.cards.length >= 3;
+            return renderCard(c, isNew, sideways);
         }).join('');
+
+        const resultHtml = h.result
+            ? `<span class="border-l border-gray-500 pl-2 font-bold uppercase ${netColor(h.result.net)}">${h.result.word} ${fmtMoney(h.result.net)}</span>`
+            : '';
 
         pHandsEl.insertAdjacentHTML('beforeend', `
             <div class="flex flex-col items-center ${hl} transition-all">
                 <div class="flex flex-row justify-center mb-2">${cardsHtml}</div>
                 <div class="text-xs bg-black/80 px-2 py-1 rounded text-white flex gap-2 items-center">
+                    ${multi ? `<span class="text-gray-400 font-bold">H${i + 1}</span>` : ''}
                     <span class="font-bold text-green-300">$${h.bet}</span>
                     <span class="border-l border-gray-500 pl-2">${vText}</span>
+                    ${resultHtml}
                 </div>
             </div>
         `);
@@ -608,35 +726,61 @@ function renderTable(newCardTarget = null) {
 
 function updateControls() {
     const actCtrl = document.getElementById('actionControls');
-    if (STATE.isGameOver) { actCtrl.classList.add('opacity-50', 'pointer-events-none'); return; }
-    actCtrl.classList.remove('opacity-50', 'pointer-events-none');
+    const locked = STATE.isGameOver || STATE.isAnimating;
+    actCtrl.classList.toggle('opacity-50', locked);
+    actCtrl.classList.toggle('pointer-events-none', locked);
+    if (STATE.isGameOver) return;
 
     let h = STATE.playerHands[STATE.currentHandIndex];
+    if (!h) return;
     
     document.getElementById('btnDouble').disabled = h.cards.length !== 2 || (h.fromSplit && !STATE.allowDAS);
-    document.getElementById('btnSplit').disabled = !(h.cards.length === 2 && h.cards[0].numVal === h.cards[1].numVal);
+    document.getElementById('btnSplit').disabled = !(h.cards.length === 2 && h.cards[0].numVal === h.cards[1].numVal && STATE.playerHands.length < MAX_HANDS);
     
+    // Surrender stays visible (so the row stays centered) whenever the rule is on; it is only enabled on the first two cards
     const btnSur = document.getElementById('btnSurrender');
-    if (STATE.allowSurrender && h.cards.length === 2 && !h.fromSplit) {
-        btnSur.classList.remove('hidden');
-    } else {
+    if (!STATE.allowSurrender) {
         btnSur.classList.add('hidden');
+    } else {
+        btnSur.classList.remove('hidden');
+        btnSur.disabled = !(h.cards.length === 2 && !h.fromSplit);
     }
 }
 
 function updateTrackerUI() {
     document.getElementById('koCountDisplay').innerText = STATE.koCount > 0 ? `+${STATE.koCount}` : STATE.koCount;
     document.getElementById('cardsLeftDisplay').innerText = STATE.deck.length;
+    const total = 52 * STATE.numDecks;
+    const dealt = Math.round(((total - STATE.deck.length) / total) * 100);
+    const pen = document.getElementById('penDisplay');
+    if (pen) pen.innerText = `${dealt}%`;
 }
 
 function updateStatsUI() {
-    const acc = STATE.stats.totalMoves === 0 ? 0 : Math.round((STATE.stats.correctMoves / STATE.stats.totalMoves) * 100);
+    const s = STATE.stats;
+    const acc = s.totalMoves === 0 ? 0 : Math.round((s.correctMoves / s.totalMoves) * 100);
+    const ratio = `${s.correctMoves}/${s.totalMoves}`;
     
     const accEl = document.getElementById('sessionAccuracy');
-    if (accEl) accEl.innerText = `${acc}%`;
+    if (accEl) accEl.innerText = `${acc}% (${ratio})`;
+    const accModal = document.getElementById('sessionAccuracyModal');
+    if (accModal) accModal.innerText = `${acc}%`;
+    const ratioModal = document.getElementById('sessionRatioModal');
+    if (ratioModal) ratioModal.innerText = ratio;
     
     const handsEl = document.getElementById('sessionHands');
-    if (handsEl) handsEl.innerText = STATE.stats.handsPlayed;
+    if (handsEl) handsEl.innerText = s.handsPlayed;
+
+    const netTxt = fmtMoney(s.netEarnings);
+    const netCls = netColor(s.netEarnings);
+    const hdr = document.getElementById('netEarningsHeader');
+    if (hdr) { hdr.innerText = netTxt; hdr.className = `font-bold ${netCls}`; }
+    const mdl = document.getElementById('netEarningsModal');
+    if (mdl) { mdl.innerText = netTxt; mdl.className = `text-2xl font-black ${netCls}`; }
+    const rec = document.getElementById('recordModal');
+    if (rec) rec.innerText = `${s.wins}-${s.losses}-${s.pushes}`;
+    const hm = document.getElementById('handsModal');
+    if (hm) hm.innerText = `${s.handsPlayed} hands played`;
 }
 
 function showHintToast(msg) {
@@ -666,12 +810,17 @@ function showMessage(msg, colorClass) {
     el.innerText = msg;
     el.className = `text-2xl md:text-3xl font-bold drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] opacity-100 transition-opacity duration-300 text-center ${colorClass}`;
 }
+function showMessageHtml(html) {
+    const el = document.getElementById('gameMessage');
+    el.innerHTML = html;
+    el.className = 'drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] opacity-100 transition-opacity duration-300 text-center';
+}
 function hideMessage() { document.getElementById('gameMessage').classList.replace('opacity-100', 'opacity-0'); }
 
 async function saveSessionStats() {
     if (!db || !userId || STATE.stats.handsPlayed === 0) return;
     try {
-        const sessionId = 'session_' + Date.now();
+        const sessionId = SESSION_ID;
         const sessionRef = doc(db, 'artifacts', appId, 'users', userId, 'sessions', sessionId);
         await setDoc(sessionRef, {
             ...STATE.stats,
@@ -719,6 +868,7 @@ async function loadLeaderboard() {
                             ${Math.round(data.accuracy)}%
                         </div>
                         <div class="text-xs text-gray-400">${data.correctMoves}/${data.totalMoves} correct</div>
+                        <div class="text-xs font-bold ${netColor(data.netEarnings || 0)}">${fmtMoney(data.netEarnings || 0)}</div>
                     </div>
                 </div>
             `);
@@ -784,6 +934,59 @@ function setupEventListeners() {
         devModal.classList.remove('hidden');
     });
     document.getElementById('btnCloseDeviations').addEventListener('click', () => devModal.classList.add('hidden'));
+
+    const rampModal = document.getElementById('rampModal');
+    document.getElementById('btnOpenRamp').addEventListener('click', () => {
+        renderRampGuide();
+        rampModal.classList.remove('hidden');
+    });
+    document.getElementById('btnCloseRamp').addEventListener('click', () => rampModal.classList.add('hidden'));
+}
+
+// Bet ramp: 1 unit below the key count, scaling to 8 units at pivot (+4) + 4
+function getBetRamp(decks) {
+    const key = KEY_COUNTS[decks] !== undefined ? KEY_COUNTS[decks] : -4;
+    const pivot = 4;
+    const top = pivot + 4;
+    const range = top - key;
+    const th = [];   // th[i] = lowest count for (i + 2) units
+    for (let u = 2; u <= 8; u++) th.push(key + Math.round(((u - 2) * range) / 6));
+    const rows = [{ units: 1, min: -Infinity, max: th[0] - 1 }];
+    for (let u = 2; u <= 8; u++) {
+        rows.push({ units: u, min: th[u - 2], max: u === 8 ? Infinity : th[u - 1] - 1 });
+    }
+    return { key, pivot, irc: 4 - 4 * decks, rows };
+}
+
+function renderRampGuide() {
+    const r = getBetRamp(STATE.numDecks);
+    const rc = STATE.koCount;
+    const fmtC = n => (n > 0 ? `+${n}` : `${n}`);
+    const current = r.rows.find(row => rc >= row.min && rc <= row.max);
+
+    document.getElementById('rampSummary').innerHTML = `
+        <div class="grid grid-cols-3 gap-2 text-center mb-3">
+            <div class="bg-gray-800 rounded p-2"><div class="text-[10px] text-gray-400 uppercase">Start (IRC)</div><div class="font-bold text-white">${fmtC(r.irc)}</div></div>
+            <div class="bg-gray-800 rounded p-2"><div class="text-[10px] text-gray-400 uppercase">Key count</div><div class="font-bold text-yellow-300">${fmtC(r.key)}</div></div>
+            <div class="bg-gray-800 rounded p-2"><div class="text-[10px] text-gray-400 uppercase">Pivot</div><div class="font-bold text-green-400">${fmtC(r.pivot)}</div></div>
+        </div>
+        <div class="bg-emerald-900/60 border border-emerald-700 rounded p-3 text-center mb-3">
+            <div class="text-xs text-gray-300">Current KO count <span class="font-bold text-white">${fmtC(rc)}</span> (${STATE.numDecks} decks)</div>
+            <div class="text-lg font-black text-green-300">Bet ${current.units} unit${current.units > 1 ? 's' : ''}</div>
+        </div>`;
+
+    document.getElementById('rampRows').innerHTML = r.rows.map(row => {
+        let range;
+        if (row.min === -Infinity) range = `${fmtC(row.max)} or lower`;
+        else if (row.max === Infinity) range = `${fmtC(row.min)} or higher`;
+        else if (row.min === row.max) range = `${fmtC(row.min)}`;
+        else range = `${fmtC(row.min)} to ${fmtC(row.max)}`;
+        const active = row === current;
+        return `<div class="flex justify-between items-center p-2 rounded border ${active ? 'bg-green-900 border-green-500' : 'bg-gray-800 border-gray-700'}">
+            <span class="text-sm ${active ? 'text-white font-bold' : 'text-gray-300'}">${range}</span>
+            <span class="font-black ${active ? 'text-green-300' : 'text-white'}">${row.units} unit${row.units > 1 ? 's' : ''}</span>
+        </div>`;
+    }).join('');
 }
 
 function renderDeviationsList() {
@@ -806,6 +1009,8 @@ function applySettings() {
     STATE.allowSurrender = document.getElementById('tglSur').checked;
     STATE.allowDAS = document.getElementById('tglDAS').checked;
     STATE.enableDeviations = document.getElementById('tglDev').checked;
+    STATE.dealerHitsS17 = document.getElementById('tglH17').checked;
+    STATE.penetration = parseInt(document.getElementById('selPen').value) / 100;
     STATE.practiceMode = document.getElementById('selPracticeMode').value;
     
     let newDecks = parseInt(document.getElementById('selDecks').value);
@@ -830,7 +1035,7 @@ function clearBet() {
 }
 
 function pullCard(conditionFn, hidden = false) {
-    if (STATE.deck.length < 15) initializeDeck();
+    if (STATE.deck.length === 0) initializeDeck();
     let idx = STATE.deck.findIndex(conditionFn);
     if (idx === -1) {
         initializeDeck();
@@ -838,13 +1043,24 @@ function pullCard(conditionFn, hidden = false) {
     }
     const card = STATE.deck.splice(idx, 1)[0];
     if (!hidden) updateCount(card.countVal);
+    else updateTrackerUI();
     return { ...card, hidden };
+}
+
+// Cut card: reshuffle between hands once the chosen penetration has been dealt
+function shoeNeedsShuffle() {
+    const total = 52 * STATE.numDecks;
+    return STATE.deck.length <= total * (1 - STATE.penetration) || STATE.deck.length < 12;
 }
 
 function dealHand() {
     if (STATE.currentBet === 0) return;
-    if (STATE.deck.length < 15) initializeDeck();
     hideMessage();
+    if (shoeNeedsShuffle()) {
+        initializeDeck();
+        showMessage("Cut card reached - shoe reshuffled", "text-cyan-300");
+        setTimeout(hideMessage, 1800);
+    }
     document.getElementById('betControls').classList.add('hidden');
     document.getElementById('postGameControls').classList.add('hidden');
     document.getElementById('actionControls').classList.remove('hidden');
@@ -853,6 +1069,9 @@ function dealHand() {
     STATE.dealerCards = [];
     STATE.currentHandIndex = 0;
     STATE.isGameOver = false;
+    STATE.isAnimating = true;   // buttons stay locked until the deal finishes
+    STATE.insuranceNet = 0;
+    updateControls();
 
     let p1, p2, d1, d2;
 
@@ -879,12 +1098,21 @@ function dealHand() {
     setTimeout(() => {
         STATE.dealerCards.push(d2);
         renderTable('dealer');
-        let pVal = calculateHand(STATE.playerHands[0].cards);
+        const pVal = calculateHand(STATE.playerHands[0].cards);
+        const dealerBJ = d1.numVal + d2.numVal === 21;
         if (pVal.sum === 21) {
             showMessage("Blackjack!", "text-yellow-400");
             setTimeout(dealerTurn, 1000);
+        } else if (d1.value === 'A' && STATE.allowInsurance) {
+            STATE.isAnimating = false;
+            checkInsurance();
+        } else if (d1.numVal >= 10 && dealerBJ) {
+            // Dealer peeks for blackjack (10 or Ace showing)
+            showMessage("Dealer has Blackjack", "text-red-400");
+            setTimeout(dealerTurn, 900);
         } else {
-            if(!checkInsurance()) updateControls();
+            STATE.isAnimating = false;
+            updateControls();
         }
     }, 700);
 }
@@ -911,24 +1139,29 @@ init();
             <span>🔄 Shuffle</span>
         </button>
     </div>
-    <div class="flex gap-2 sm:gap-3 flex-wrap justify-end">
+    <div class="flex gap-2 sm:gap-3 flex-wrap justify-end items-center">
         <button id="btnOpenDeviations" class="text-xs bg-emerald-800 hover:bg-emerald-700 px-2.5 py-1 rounded transition-colors text-white font-bold">📖 KO Deviations</button>
+        <button id="btnOpenRamp" class="text-xs bg-emerald-800 hover:bg-emerald-700 px-2.5 py-1 rounded transition-colors text-white font-bold">📈 Bet Ramp</button>
         <button id="btnOpenStats" class="text-sm bg-blue-600/80 hover:bg-blue-500 px-3 py-1 rounded transition-colors flex items-center gap-2">
-            <span>Stats</span> <span id="sessionAccuracy" class="font-bold text-yellow-300">0%</span>
+            <span>Stats</span> <span id="sessionAccuracy" class="font-bold text-yellow-300">0% (0/0)</span>
             <span id="sessionHands" class="hidden">0</span>
         </button>
+        <div class="text-sm bg-black/50 px-3 py-1 rounded flex items-center gap-1" title="Net earnings this session">
+            <span>💰</span><span id="netEarningsHeader" class="font-bold text-gray-300">$0</span>
+        </div>
         <button id="btnOpenSettings" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition-colors">⚙️ Settings</button>
     </div>
 </header>
 
 <main class="flex-grow flex flex-col items-center relative overflow-hidden p-4">
-    <div id="trackerBox" class="absolute top-1/2 -translate-y-1/2 left-2 sm:left-4 bg-black/70 p-2 sm:p-3 rounded-lg border border-gray-600 transition-opacity duration-300 w-16 sm:w-28 flex flex-col items-center shadow-lg z-0">
+    <div id="trackerBox" class="absolute top-[36%] -translate-y-1/2 left-2 sm:left-4 bg-black/70 p-2 sm:p-3 rounded-lg border border-gray-600 transition-opacity duration-300 w-16 sm:w-28 flex flex-col items-center shadow-lg z-0">
         <h3 class="font-bold text-gray-300 mb-1 border-b border-gray-500 pb-1 text-center text-[11px] sm:text-sm w-full tracking-widest">KO</h3>
         <div class="my-1 sm:my-2 text-center">
             <span class="text-white text-xl sm:text-3xl font-black drop-shadow-md" id="koCountDisplay">0</span>
         </div>
         <div class="pt-1 sm:pt-2 border-t border-gray-700 text-[9px] sm:text-xs text-gray-400 text-center w-full leading-tight">
             Cards<br><span id="cardsLeftDisplay" class="font-bold text-white text-[10px] sm:text-sm">0</span>
+            <div class="mt-1">Pen <span id="penDisplay" class="font-bold text-white">0%</span></div>
         </div>
     </div>
 
@@ -938,7 +1171,7 @@ init();
             <div id="dealerHand" class="flex flex-row justify-center h-28"></div>
         </div>
 
-        <div class="flex justify-center items-center h-16 my-4">
+        <div class="flex justify-center items-center min-h-[4rem] my-4">
             <div id="gameMessage" class="text-2xl md:text-3xl font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] opacity-100 transition-opacity duration-300 text-center">Place your bet</div>
         </div>
 
@@ -963,12 +1196,12 @@ init();
         </div>
     </div>
 
-    <div id="actionControls" class="hidden flex-wrap justify-center gap-2 w-full max-w-2xl">
-        <button id="btnHit" class="flex-1 min-w-[70px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded disabled:opacity-50">Hit</button>
-        <button id="btnStand" class="flex-1 min-w-[70px] bg-red-700 hover:bg-red-600 text-white font-bold py-3 rounded disabled:opacity-50">Stand</button>
-        <button id="btnDouble" class="flex-1 min-w-[70px] bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 rounded disabled:opacity-50">Double</button>
-        <button id="btnSplit" class="flex-1 min-w-[70px] bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded disabled:opacity-50">Split</button>
-        <button id="btnSurrender" class="flex-1 min-w-[70px] bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded hidden">Surrender</button>
+    <div id="actionControls" class="hidden flex flex-wrap justify-center items-center gap-2 w-full max-w-2xl">
+        <button id="btnHit" class="act-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-1 rounded text-sm sm:text-base disabled:opacity-50">Hit</button>
+        <button id="btnStand" class="act-btn bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-1 rounded text-sm sm:text-base disabled:opacity-50">Stand</button>
+        <button id="btnDouble" class="act-btn bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-1 rounded text-sm sm:text-base disabled:opacity-50">Double</button>
+        <button id="btnSplit" class="act-btn bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-1 rounded text-sm sm:text-base disabled:opacity-50">Split</button>
+        <button id="btnSurrender" class="act-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-1 rounded text-[11px] sm:text-base disabled:opacity-40 hidden">🏳️ Surrender</button>
     </div>
 
     <div id="postGameControls" class="hidden w-full flex justify-center">
@@ -1002,6 +1235,14 @@ init();
                     <option value="2">2 Decks</option><option value="6" selected>6 Decks</option><option value="8">8 Decks</option>
                 </select>
             </div>
+            <div class="flex justify-between items-center">
+                <span>Deck Penetration</span>
+                <select id="selPen" class="bg-gray-800 border border-gray-600 rounded px-2 py-1 outline-none">
+                    <option value="50">50%</option><option value="60">60%</option><option value="65">65%</option>
+                    <option value="70">70%</option><option value="75" selected>75%</option>
+                    <option value="80">80%</option><option value="85">85%</option><option value="90">90%</option>
+                </select>
+            </div>
             
             <label class="flex justify-between items-center cursor-pointer"><span>Strategy Enforcement</span><input type="checkbox" id="tglHints" checked class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
             <label class="flex justify-between items-center cursor-pointer"><span>Show KO Count</span><input type="checkbox" id="tglCount" checked class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
@@ -1010,6 +1251,7 @@ init();
             <label class="flex justify-between items-center cursor-pointer"><span>Allow Insurance</span><input type="checkbox" id="tglIns" checked class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
             <label class="flex justify-between items-center cursor-pointer"><span>Allow Late Surrender</span><input type="checkbox" id="tglSur" checked class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
             <label class="flex justify-between items-center cursor-pointer"><span>Double After Split (DAS)</span><input type="checkbox" id="tglDAS" checked class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
+            <label class="flex justify-between items-center cursor-pointer"><span>Dealer Hits Soft 17 (H17)</span><input type="checkbox" id="tglH17" checked class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
             
             <div class="border-t border-gray-700 my-2 pt-2 text-xs text-gray-500 uppercase">Practice Mode</div>
             <div class="flex justify-between items-center">
@@ -1037,6 +1279,19 @@ init();
         <div class="bg-gray-800 rounded p-4 mb-4 text-center">
             <div class="text-sm text-gray-400">Current Session Accuracy</div>
             <div class="text-4xl font-black text-green-400 mt-1" id="sessionAccuracyModal">0%</div>
+            <div class="text-sm text-gray-300 mt-1"><span id="sessionRatioModal" class="font-bold">0/0</span> correct moves</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="bg-gray-800 rounded p-3 text-center">
+                <div class="text-xs text-gray-400">Net Earnings</div>
+                <div id="netEarningsModal" class="text-2xl font-black text-gray-300">$0</div>
+            </div>
+            <div class="bg-gray-800 rounded p-3 text-center">
+                <div class="text-xs text-gray-400">Record (W-L-P)</div>
+                <div id="recordModal" class="text-2xl font-black text-white">0-0-0</div>
+                <div id="handsModal" class="text-[10px] text-gray-500">0 hands played</div>
+            </div>
         </div>
 
         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Saved Past Sessions</h3>
@@ -1059,6 +1314,18 @@ init();
     </div>
 </div>
 
+<div id="rampModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
+    <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-md mx-4 max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+            <h2 class="text-xl font-bold text-white">KO Bet Ramp (1-8 Units)</h2>
+            <button id="btnCloseRamp" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+        <div id="rampSummary"></div>
+        <div id="rampRows" class="flex-grow overflow-y-auto pr-2 space-y-2"></div>
+        <p class="text-[11px] text-gray-500 mt-3">Bet 1 unit below the key count, then scale up to 8 units as the count climbs past the pivot. Key count and pivot follow the standard KO tables for your deck setting; the step sizes are a scaled guide, so adjust to your bankroll and table limits.</p>
+    </div>
+</div>
+
 <style>
     @keyframes cardDeal {
         from { transform: translateY(-40px) scale(0.8); opacity: 0; }
@@ -1068,17 +1335,6 @@ init();
         animation: cardDeal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
 </style>
-<script>
-    const accObserver = new MutationObserver(() => {
-        const accEl = document.getElementById('sessionAccuracy');
-        const modalAccEl = document.getElementById('sessionAccuracyModal');
-        if(accEl && modalAccEl) modalAccEl.innerText = accEl.innerText;
-    });
-    
-    window.addEventListener('DOMContentLoaded', () => {
-        const accEl = document.getElementById('sessionAccuracy');
-        if(accEl) accObserver.observe(accEl, { childList: true, characterData: true, subtree: true });
-    });
-</script>
+
 </body>
 </html>
