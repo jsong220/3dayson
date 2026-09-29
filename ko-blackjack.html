@@ -15,6 +15,10 @@
       font-family: 'Inter', sans-serif;
       background-color: #1a472a;
       color: white;
+      min-height: 100vh;
+      min-height: 100dvh;
+      height: 100dvh;
+      overflow: hidden;
       overscroll-behavior-y: none;
       -webkit-touch-callout: none;
       -webkit-user-select: none;
@@ -185,7 +189,7 @@
   </style>
 </head>
 
-<body class="min-h-screen flex flex-col">
+<body class="h-screen h-[100dvh] flex flex-col overflow-hidden">
   <header class="bg-black/40 p-4 shadow-md flex justify-between items-center border-b border-green-800">
     <div class="flex items-center gap-3"><a href="index.html" id="btnHome" title="Back to menu"
         aria-label="Back to menu"
