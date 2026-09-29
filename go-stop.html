@@ -18,7 +18,7 @@
             transition: transform 0.2s, box-shadow 0.2s, z-index 0s;
         }
         .card-hover:hover {
-            transform: translateY(-20px) scale(1.1);
+            transform: translateY(-18px) scale(1.1);
             z-index: 50 !important;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
         }
@@ -32,7 +32,6 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Selection animations */
         @keyframes pulse-ring {
             0% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.8); }
             70% { box-shadow: 0 0 0 15px rgba(250, 204, 21, 0); }
@@ -45,49 +44,105 @@
             transform: scale(1.15);
             z-index: 40;
         }
+
+        .table-group {
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+        }
+        .table-card {
+            border-radius: 0.3rem;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease, filter 0.22s ease;
+        }
+        .dim-card {
+            opacity: 0.35;
+            filter: grayscale(65%);
+            transform: scale(0.93);
+        }
+        .match-highlight {
+            box-shadow: 0 0 0 4px #facc15, 0 0 22px 8px rgba(250, 204, 21, 0.55) !important;
+            transform: translateY(-10px) scale(1.08);
+            z-index: 30;
+        }
+        @keyframes match-pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.0);  transform: translateY(0) scale(1); }
+            50%  { box-shadow: 0 0 0 9px rgba(250, 204, 21, 0.45), 0 0 26px 8px rgba(250, 204, 21, 0.55); transform: translateY(-9px) scale(1.07); }
+            100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.0);  transform: translateY(0) scale(1); }
+        }
+        .match-pulse {
+            animation: match-pulse 0.42s ease-in-out 2;
+            position: relative;
+            z-index: 30;
+        }
+        @keyframes pop-in {
+            0% { transform: scale(0.7); opacity: 0; }
+            70% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pop-in { animation: pop-in 0.25s ease-out; }
+
+        .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+        .sidebar-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent; }
+
+        @keyframes popup-in {
+            0% { transform: scale(0.92); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .popup-in { animation: popup-in 0.18s ease-out; }
+
+        @keyframes bonus-flash {
+            0% { background-color: rgba(250, 204, 21, 0.6); }
+            100% { background-color: transparent; }
+        }
+        .bonus-flash { animation: bonus-flash 1.2s ease-out; }
     </style>
 </head>
 <body class="bg-emerald-900 min-h-screen text-emerald-50 font-sans overflow-hidden flex flex-col p-2">
 
     <!-- Header -->
-    <header class="flex justify-between items-center bg-black/40 px-4 py-2 rounded-xl shadow-md border border-white/10 z-10 mx-auto w-full max-w-5xl mb-2">
+    <header class="flex justify-between items-center bg-black/40 px-4 py-2 rounded-xl shadow-md border border-white/10 z-10 mx-auto w-full max-w-6xl mb-2 shrink-0">
         <div id="game-message" class="text-base font-black text-yellow-300 drop-shadow-md tracking-wide">Game Ready</div>
-        <button onclick="startNewGame()" class="text-xs font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-lg shadow border border-emerald-500 transition-colors">Restart</button>
+        <div class="flex items-center gap-2">
+            <button id="btn-view-results" onclick="showGameOverModal()"
+                    class="hidden text-xs font-bold uppercase tracking-wider bg-yellow-500 hover:bg-yellow-400 text-yellow-950 px-4 py-2 rounded-lg shadow border border-yellow-300 transition-colors">
+                View Results
+            </button>
+            <button onclick="startNewGame()" class="text-xs font-bold uppercase tracking-wider bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-lg shadow border border-emerald-500 transition-colors">Restart</button>
+        </div>
     </header>
 
-    <div class="flex-1 max-w-5xl w-full mx-auto flex flex-col relative z-10 justify-between">
-        
-        <!-- Computer Area -->
-        <div class="flex flex-col gap-1">
-            <div id="computer-captured" class="bg-black/20 p-2 rounded-xl min-h-[60px] flex items-center gap-2 border border-emerald-800/50"></div>
-            <!-- Computer Hand -->
-            <div id="computer-hand" class="flex justify-center gap-0 h-28 sm:h-36 px-2 opacity-90 mt-2"></div>
-        </div>
+    <!-- Main Layout Wrapper (no forced height — hugs content) -->
+    <div class="w-full max-w-6xl mx-auto flex flex-row gap-2 items-stretch">
 
-        <!-- Table Area (Compact and tightly wrapped) -->
-        <div class="bg-emerald-800/40 border-y-2 border-emerald-600/30 py-6 px-4 flex flex-col items-center shadow-inner relative my-2 w-full rounded-2xl">
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.15]">
-                <span class="font-black text-6xl tracking-[0.3em]">TABLE</span>
-            </div>
+        <!-- Left Sidebar: CPU Captured -->
+        <div id="cpu-captured-sidebar" class="w-[150px] sm:w-[165px] lg:w-[180px] bg-black/30 rounded-xl p-2 flex flex-col border border-emerald-800/50 sidebar-scroll overflow-y-auto shrink-0"></div>
+
+        <!-- Center Main Area -->
+        <div class="flex-1 flex flex-col gap-2 min-w-0 overflow-visible">
             
-            <div class="flex flex-row items-center w-full justify-center gap-6 relative z-10">
-                <!-- Deck in center -->
-                <div class="flex flex-col items-center justify-center shrink-0">
-                    <div id="deck-stack" class="relative w-[80px] h-[115px] sm:w-[90px] sm:h-[130px] rounded border-2 border-white/30 shadow-xl flex items-center justify-center card-back">
+            <!-- Computer Hand -->
+            <div id="computer-hand" class="flex flex-col gap-1 items-center shrink-0 overflow-visible"></div>
+
+            <!-- Table Area -->
+            <div class="bg-emerald-800/40 border-y-2 border-emerald-600/30 py-2 px-3 flex flex-row items-center justify-center gap-3 shadow-inner relative rounded-2xl shrink-0">
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.07]">
+                    <span class="font-black text-5xl tracking-[0.3em]">TABLE</span>
+                </div>
+                
+                <div class="flex flex-col items-center justify-center shrink-0 z-10">
+                    <div id="deck-stack" class="relative w-[70px] h-[100px] sm:w-[80px] sm:h-[115px] rounded border-2 border-white/30 shadow-xl flex items-center justify-center card-back">
                         <span id="deck-count" class="text-white font-bold text-sm bg-black/70 px-2 py-1 rounded shadow-inner">20</span>
                     </div>
                 </div>
-                <!-- Played Cards on Table -->
-                <div id="table-cards" class="flex flex-wrap items-center justify-start gap-3 flex-1 min-h-[130px]"></div>
+                <div id="table-cards" class="flex flex-wrap items-center justify-center content-center gap-2 py-1 px-2 w-full max-w-[520px] z-10"></div>
             </div>
+
+            <!-- Player Hand -->
+            <div id="player-hand" class="flex flex-col gap-1 items-center shrink-0 overflow-visible"></div>
         </div>
 
-        <!-- Player Area -->
-        <div class="flex flex-col gap-1 justify-end">
-            <!-- Player Hand -->
-            <div id="player-hand" class="flex justify-center bg-black/10 p-4 rounded-t-2xl min-h-[150px] overflow-visible items-end"></div>
-            <div id="player-captured" class="bg-black/30 p-2 rounded-b-xl min-h-[70px] flex items-center gap-2 border-t border-emerald-600/50"></div>
-        </div>
+        <!-- Right Sidebar: Player Captured -->
+        <div id="player-captured-sidebar" class="w-[150px] sm:w-[165px] lg:w-[180px] bg-black/30 rounded-xl p-2 flex flex-col border border-emerald-800/50 sidebar-scroll overflow-y-auto shrink-0"></div>
     </div>
 
     <!-- Go/Stop Modal -->
@@ -118,25 +173,40 @@
                     <p id="gameover-computer-score" class="text-4xl font-black text-rose-700">0</p>
                 </div>
             </div>
-            <button onclick="startNewGame()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-black text-lg py-4 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5">Play Again</button>
+            <div class="flex gap-2">
+                <button onclick="hideGameOverModal()"
+                        class="flex-1 bg-white hover:bg-slate-100 text-slate-700 font-black text-base py-4 rounded-xl shadow border-2 border-slate-200 transition-transform hover:-translate-y-0.5">
+                    View Board
+                </button>
+                <button onclick="startNewGame()"
+                        class="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-black text-base py-4 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5">
+                    Play Again
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
         const CARD_TYPES = { KWANG: 'Kwang', YUL: 'Yul', TTI: 'Tti', PI: 'Pi' };
-        const RIBBON_TYPES = { RED_POETRY: 'Red Poetry', BLUE: 'Blue', RED_PLAIN: 'Red Plain' };
+        const RIBBON_TYPES = { RED_POETRY: 'Red Poetry', BLUE: 'Blue', RED_PLAIN: 'Red Plain', RAIN: 'Rain' };
         const TYPE_RANK = { [CARD_TYPES.KWANG]: 4, [CARD_TYPES.YUL]: 3, [CARD_TYPES.TTI]: 2, [CARD_TYPES.PI]: 1 };
 
-        // Unified distinct backgrounds for each month
+        const GROUP_META = {
+            [CARD_TYPES.KWANG]: { icon: '🌟', label: 'Kwang', color: 'text-amber-300',   bg: 'bg-amber-500/20',   border: 'border-amber-400/40' },
+            [CARD_TYPES.YUL]:   { icon: '🐦', label: 'Yul',   color: 'text-emerald-300', bg: 'bg-emerald-500/20', border: 'border-emerald-400/40' },
+            [CARD_TYPES.TTI]:   { icon: '🎀', label: 'Tti',   color: 'text-rose-300',    bg: 'bg-rose-500/20',    border: 'border-rose-400/40' },
+            [CARD_TYPES.PI]:    { icon: '🃏', label: 'Pi',    color: 'text-slate-300',   bg: 'bg-slate-500/20',   border: 'border-slate-400/40' },
+        };
+
         const MONTH_THEMES = {
             1: { bg: 'bg-green-200', border: 'border-green-400', emoji: '🌲', name: 'Pine' },
-            2: { bg: 'bg-red-200', border: 'border-red-400', emoji: '🐦', name: 'Plum' },
+            2: { bg: 'bg-red-200', border: 'border-red-400', emoji: '🐦', name: 'Plum' },       // Bush warbler
             3: { bg: 'bg-pink-200', border: 'border-pink-400', emoji: '🌸', name: 'Cherry' },
-            4: { bg: 'bg-stone-300', border: 'border-stone-500', emoji: '🌿', name: 'Wisteria' },
+            4: { bg: 'bg-stone-300', border: 'border-stone-500', emoji: '🕊️', name: 'Wisteria' }, // Cuckoo
             5: { bg: 'bg-blue-200', border: 'border-blue-400', emoji: '🌉', name: 'Iris' },
             6: { bg: 'bg-purple-200', border: 'border-purple-400', emoji: '🦋', name: 'Peony' },
             7: { bg: 'bg-lime-200', border: 'border-lime-400', emoji: '🐗', name: 'Clover' },
-            8: { bg: 'bg-gray-300', border: 'border-gray-500', emoji: '🌕', name: 'Moon' },
+            8: { bg: 'bg-gray-300', border: 'border-gray-500', emoji: '🌕', name: 'Moon' },       // Moon + geese
             9: { bg: 'bg-yellow-200', border: 'border-yellow-400', emoji: '🍶', name: 'Chrysanthemum' },
             10: { bg: 'bg-orange-200', border: 'border-orange-400', emoji: '🦌', name: 'Maple' },
             11: { bg: 'bg-slate-400', border: 'border-slate-600', emoji: '🦅', name: 'Paulownia' },
@@ -145,164 +215,441 @@
 
         const BASE_DECK = [
             { month: 1, type: CARD_TYPES.KWANG }, { month: 1, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.RED_POETRY }, { month: 1, type: CARD_TYPES.PI }, { month: 1, type: CARD_TYPES.PI },
-            { month: 2, type: CARD_TYPES.YUL }, { month: 2, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.RED_POETRY }, { month: 2, type: CARD_TYPES.PI }, { month: 2, type: CARD_TYPES.PI },
+            { month: 2, type: CARD_TYPES.YUL, isBird: true }, { month: 2, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.RED_POETRY }, { month: 2, type: CARD_TYPES.PI }, { month: 2, type: CARD_TYPES.PI },
             { month: 3, type: CARD_TYPES.KWANG }, { month: 3, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.RED_POETRY }, { month: 3, type: CARD_TYPES.PI }, { month: 3, type: CARD_TYPES.PI },
-            { month: 4, type: CARD_TYPES.YUL }, { month: 4, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.RED_PLAIN }, { month: 4, type: CARD_TYPES.PI }, { month: 4, type: CARD_TYPES.PI },
+            { month: 4, type: CARD_TYPES.YUL, isBird: true }, { month: 4, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.RED_PLAIN }, { month: 4, type: CARD_TYPES.PI }, { month: 4, type: CARD_TYPES.PI },
             { month: 5, type: CARD_TYPES.YUL }, { month: 5, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.RED_PLAIN }, { month: 5, type: CARD_TYPES.PI }, { month: 5, type: CARD_TYPES.PI },
             { month: 6, type: CARD_TYPES.YUL }, { month: 6, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.BLUE }, { month: 6, type: CARD_TYPES.PI }, { month: 6, type: CARD_TYPES.PI },
             { month: 7, type: CARD_TYPES.YUL }, { month: 7, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.RED_PLAIN }, { month: 7, type: CARD_TYPES.PI }, { month: 7, type: CARD_TYPES.PI },
-            { month: 8, type: CARD_TYPES.KWANG }, { month: 8, type: CARD_TYPES.YUL }, { month: 8, type: CARD_TYPES.PI }, { month: 8, type: CARD_TYPES.PI },
-            { month: 9, type: CARD_TYPES.YUL, isDoublePi: true }, { month: 9, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.BLUE }, { month: 9, type: CARD_TYPES.PI }, { month: 9, type: CARD_TYPES.PI },
+            { month: 8, type: CARD_TYPES.KWANG }, { month: 8, type: CARD_TYPES.YUL, isBird: true }, { month: 8, type: CARD_TYPES.PI }, { month: 8, type: CARD_TYPES.PI },
+            { month: 9, type: CARD_TYPES.YUL, isDoublePi: true, isSpecial: true, countAs: 'pi' }, { month: 9, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.BLUE }, { month: 9, type: CARD_TYPES.PI }, { month: 9, type: CARD_TYPES.PI },
             { month: 10, type: CARD_TYPES.YUL }, { month: 10, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.BLUE }, { month: 10, type: CARD_TYPES.PI }, { month: 10, type: CARD_TYPES.PI },
             { month: 11, type: CARD_TYPES.KWANG }, { month: 11, type: CARD_TYPES.PI, isDoublePi: true }, { month: 11, type: CARD_TYPES.PI }, { month: 11, type: CARD_TYPES.PI },
-            { month: 12, type: CARD_TYPES.KWANG }, { month: 12, type: CARD_TYPES.YUL }, { month: 12, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.RED_PLAIN }, { month: 12, type: CARD_TYPES.PI, isDoublePi: true },
+            { month: 12, type: CARD_TYPES.KWANG }, { month: 12, type: CARD_TYPES.YUL }, { month: 12, type: CARD_TYPES.TTI, ribbon: RIBBON_TYPES.RAIN }, { month: 12, type: CARD_TYPES.PI, isDoublePi: true },
         ];
 
         let state = {
             deck: [], playerHand: [], computerHand: [], table: [],
             playerCaptured: [], computerCaptured: [],
             playerScore: 0, computerScore: 0,
-            turn: 'player', isAnimating: false, pendingGoStop: null
+            turn: 'player', isAnimating: false, pendingGoStop: null,
+            statusText: null, gameOver: false, winner: null, endReason: ''
         };
 
         const sleep = ms => new Promise(res => setTimeout(res, ms));
 
+        function getEffectiveType(card) {
+            if (card.isSpecial) return card.countAs === 'yul' ? CARD_TYPES.YUL : CARD_TYPES.PI;
+            return card.type;
+        }
+
+        function toggleSpecial(cardId) {
+            const allCards = [...state.playerCaptured, ...state.computerCaptured];
+            const card = allCards.find(c => c.id === cardId);
+            if (!card || !card.isSpecial) return;
+            card.countAs = card.countAs === 'yul' ? 'pi' : 'yul';
+            state.playerScore = calculateScore(state.playerCaptured);
+            state.computerScore = calculateScore(state.computerCaptured);
+            renderState();
+        }
+
+        function getRowSplits(n) {
+            if (n <= 1) return [n];
+            const perRow = Math.ceil(n / 2);
+            const splits = [];
+            let remaining = n;
+            for (let i = 0; i < 2; i++) {
+                const take = Math.min(perRow, remaining);
+                splits.push(take);
+                remaining -= take;
+            }
+            return splits;
+        }
+
         function createCardHTML(card, isHidden = false, interactive = false) {
             if (isHidden) {
-                // Increased computer hand card sizes
-                return `<div class="card-visual w-[80px] h-[115px] sm:w-[90px] sm:h-[130px] rounded shadow-md border-[2px] border-white/20 card-back"></div>`;
+                return `<div class="card-visual w-[70px] h-[100px] sm:w-[80px] sm:h-[115px] rounded shadow-md border-[2px] border-white/20 card-back"></div>`;
             }
 
             const theme = MONTH_THEMES[card.month];
             
             let centerContent = '';
             if (card.type === CARD_TYPES.KWANG) {
-                centerContent = `<div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-red-600 flex items-center justify-center shadow-inner border-[2px] border-yellow-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"><span class="text-yellow-300 font-bold text-lg sm:text-xl font-serif">光</span></div>`;
+                centerContent = `<div class="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-red-600 flex items-center justify-center shadow-inner border-[2px] border-yellow-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"><span class="text-yellow-300 font-bold text-base sm:text-lg font-serif">光</span></div>`;
             } else if (card.type === CARD_TYPES.TTI) {
-                const ribbonColor = card.ribbon === RIBBON_TYPES.RED_POETRY ? 'bg-red-500' : card.ribbon === RIBBON_TYPES.BLUE ? 'bg-blue-600' : 'bg-red-500';
+                const ribbonColor = card.ribbon === RIBBON_TYPES.RED_POETRY ? 'bg-red-500' : card.ribbon === RIBBON_TYPES.BLUE ? 'bg-blue-600' : card.ribbon === RIBBON_TYPES.RAIN ? 'bg-teal-700' : 'bg-red-500';
                 let ribbonText = card.ribbon === RIBBON_TYPES.RED_POETRY ? '홍단' : card.ribbon === RIBBON_TYPES.BLUE ? '청단' : '';
-                centerContent = `<div class="absolute top-1 left-1/2 transform -translate-x-1/2 w-4 sm:w-5 h-14 sm:h-16 shadow-sm border-b border-r border-black/20 z-20 ${ribbonColor}">${ribbonText ? `<div class="text-[10px] text-white text-center font-bold mt-2 opacity-90 writing-vertical mx-auto">${ribbonText}</div>` : ''}</div>`;
-            } else if (card.type === CARD_TYPES.YUL && !card.isDoublePi) {
-                centerContent = `<div class="text-3xl sm:text-4xl absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 drop-shadow-md">${theme.emoji}</div>`;
+                centerContent = `<div class="absolute top-1 left-1/2 transform -translate-x-1/2 w-3.5 sm:w-4 h-12 sm:h-14 shadow-sm border-b border-r border-black/20 z-20 ${ribbonColor}">${ribbonText ? `<div class="text-[9px] text-white text-center font-bold mt-1.5 opacity-90 writing-vertical mx-auto">${ribbonText}</div>` : ''}</div>`;
+            } else if (card.type === CARD_TYPES.YUL) {
+                if (card.month === 8) {
+                    /* --- Month 8: Moon + 3 geese flying across --- */
+                    centerContent = `
+                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+                            <div class="relative flex flex-col items-center justify-center">
+                                <div class="text-2xl sm:text-3xl drop-shadow-md leading-none">🌕</div>
+                                <div class="text-[11px] sm:text-[13px] leading-none mt-0.5 tracking-tight">🦆🦆🦆</div>
+                            </div>
+                        </div>`;
+                } else {
+                    /* --- Month 2 (warbler) and Month 4 (cuckoo) — single bird --- */
+                    centerContent = `<div class="text-2xl sm:text-3xl absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 drop-shadow-md">${theme.emoji}</div>`;
+                }
             }
 
-            const doublePiBadge = card.isDoublePi ? `<div class="absolute bottom-1 right-1 bg-red-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded z-30 shadow border border-red-800">2x</div>` : '';
+            let badge = '';
+            if (card.isSpecial) {
+                const modeColor = card.countAs === 'pi' ? 'bg-red-600 border-red-800' : 'bg-emerald-600 border-emerald-800';
+                const modeLabel = card.countAs === 'pi' ? '2PI' : 'YUL';
+                badge = `<div class="absolute bottom-0.5 right-0.5 ${modeColor} text-white text-[8px] font-black px-1 py-0.5 rounded z-30 shadow border">${modeLabel}</div>`;
+            } else if (card.isDoublePi) {
+                badge = `<div class="absolute bottom-0.5 right-0.5 bg-red-600 text-white text-[9px] font-black px-1 py-0.5 rounded z-30 shadow border border-red-800">2x</div>`;
+            } else if (card.isBird) {
+                badge = `<div class="absolute bottom-0.5 right-0.5 bg-emerald-700 text-white text-[8px] font-black px-1 py-0.5 rounded z-30 shadow border border-emerald-900">🐦</div>`;
+            }
 
             return `
-            <div class="card-visual relative w-[80px] h-[115px] sm:w-[90px] sm:h-[130px] rounded shadow-md border-[2px] ${theme.border} ${theme.bg} overflow-hidden text-slate-900 ${interactive ? 'card-hover cursor-pointer' : ''}">
+            <div class="card-visual relative w-[70px] h-[100px] sm:w-[80px] sm:h-[115px] rounded shadow-md border-[2px] ${theme.border} ${theme.bg} overflow-hidden text-slate-900 ${interactive ? 'card-hover cursor-pointer' : ''}">
                 <div class="absolute inset-0 bg-white opacity-20 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:4px_4px] mix-blend-overlay z-0"></div>
-                <div class="absolute top-1 left-1 flex flex-col items-center z-10"><span class="text-[10px] sm:text-xs font-black leading-none bg-white/70 rounded px-1 py-0.5 shadow-sm">${card.month}</span></div>
-                <div class="absolute top-1 right-1 text-xs sm:text-sm opacity-70 z-10">${theme.emoji}</div>
+                <div class="absolute top-0.5 left-0.5 flex flex-col items-center z-10"><span class="text-[9px] sm:text-[10px] font-black leading-none bg-white/70 rounded px-1 py-0.5 shadow-sm">${card.month}</span></div>
+                <div class="absolute top-0.5 right-0.5 text-[10px] sm:text-xs opacity-70 z-10">${theme.emoji}</div>
                 ${centerContent}
-                ${doublePiBadge}
+                ${badge}
             </div>`;
         }
 
         function renderState() {
             document.getElementById('deck-count').innerText = state.deck.length;
+
             const msgEl = document.getElementById('game-message');
-            if(state.isAnimating && state.turn === 'player' && msgEl.innerText !== "Select a card to capture!") {
-               // keep custom messages if set
+            if (state.gameOver) {
+                msgEl.innerText = `Game Over — You ${state.playerScore} : ${state.computerScore} CPU`;
+            } else if (state.statusText) {
+                msgEl.innerText = state.statusText;
             } else {
-               msgEl.innerText = state.turn === 'player' ? 'Your Turn' : state.turn === 'computer' ? 'Computer Thinking...' : state.message || '';
+                msgEl.innerText = state.turn === 'player' ? 'Your Turn' : 'Computer Thinking...';
             }
 
-            // Using significant negative margins (-ml-10 / -ml-14) to overlap the larger cards
-            document.getElementById('player-hand').innerHTML = state.playerHand.map((c, i) => `
-                <div id="ph-${c.id}" class="-ml-10 sm:-ml-12 first:ml-0 relative z-10 group" onclick="handleCardClick(${i})">
-                    ${createCardHTML(c, false, state.turn === 'player')}
-                </div>
-            `).join('');
+            renderPlayerHand();
+            renderComputerHand();
+            renderTable();
+            renderCapturedArea('player-captured-sidebar', state.playerCaptured, 'Player', state.playerScore);
+            renderCapturedArea('cpu-captured-sidebar', state.computerCaptured, 'CPU', state.computerScore);
+        }
 
-            document.getElementById('computer-hand').innerHTML = state.computerHand.map(c => `
-                <div id="ch-${c.id}" class="-ml-10 sm:-ml-12 first:ml-0 transform relative z-10">${createCardHTML(c, true)}</div>
-            `).join('');
+        function renderPlayerHand() {
+            const container = document.getElementById('player-hand');
+            const cards = state.playerHand;
+            const canPlay = state.turn === 'player' && !state.isAnimating && !state.gameOver;
+            const splits = getRowSplits(cards.length);
+            let html = '';
+            let idx = 0;
+            splits.forEach(count => {
+                html += `<div class="flex justify-center gap-1.5">`;
+                for (let i = 0; i < count; i++) {
+                    const c = cards[idx];
+                    const cardIdx = idx;
+                    idx++;
+                    const hasMatch = state.table.some(t => t.month === c.month);
+                    html += `
+                        <div id="ph-${c.id}" class="relative"
+                             ${canPlay ? `onmouseenter="highlightMatches(${c.month})" onmouseleave="clearHighlights()"` : ''}
+                             onclick="handleCardClick(${cardIdx})">
+                            ${createCardHTML(c, false, canPlay)}
+                            ${(hasMatch && canPlay) ? `<div class="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full bg-yellow-300 border-2 border-yellow-600 shadow-lg z-30 flex items-center justify-center text-[9px] font-black text-yellow-900">!</div>` : ''}
+                        </div>`;
+                }
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+        }
 
-            document.getElementById('table-cards').innerHTML = state.table.map(c => `
-                <div id="tb-${c.id}" class="shadow-lg rounded transition-all duration-300">${createCardHTML(c)}</div>
-            `).join('');
+        function renderComputerHand() {
+            const container = document.getElementById('computer-hand');
+            const cards = state.computerHand;
+            const splits = getRowSplits(cards.length);
+            let html = '';
+            let idx = 0;
+            splits.forEach(count => {
+                html += `<div class="flex justify-center gap-1.5">`;
+                for (let i = 0; i < count; i++) {
+                    const c = cards[idx];
+                    idx++;
+                    html += `<div id="ch-${c.id}" class="relative">${createCardHTML(c, true)}</div>`;
+                }
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+        }
 
-            renderCapturedArea('player-captured', state.playerCaptured, 'Player', state.playerScore);
-            renderCapturedArea('computer-captured', state.computerCaptured, 'CPU', state.computerScore);
+        function renderTable() {
+            const container = document.getElementById('table-cards');
+            if (state.table.length === 0) { container.innerHTML = ''; return; }
+
+            const months = [...new Set(state.table.map(c => c.month))].sort((a, b) => a - b);
+
+            container.innerHTML = months.map(m => {
+                const cards = state.table
+                    .filter(c => c.month === m)
+                    .sort((a, b) => TYPE_RANK[b.type] - TYPE_RANK[a.type]);
+                const isPair = cards.length > 1;
+
+                const wrapperClass = isPair
+                    ? 'p-1 bg-yellow-400/20 border-2 border-yellow-400/50 shadow-inner rounded-xl'
+                    : '';
+
+                return `
+                <div class="table-group flex items-center gap-1 ${wrapperClass}">
+                    ${cards.map(c => `
+                        <div id="tb-${c.id}" class="table-card rounded">
+                            ${createCardHTML(c)}
+                        </div>`).join('')}
+                </div>`;
+            }).join('');
         }
 
         function groupCaptured(cards) {
             return {
-                [CARD_TYPES.KWANG]: cards.filter(c => c.type === CARD_TYPES.KWANG),
-                [CARD_TYPES.YUL]: cards.filter(c => c.type === CARD_TYPES.YUL),
-                [CARD_TYPES.TTI]: cards.filter(c => c.type === CARD_TYPES.TTI),
-                [CARD_TYPES.PI]: cards.filter(c => c.type === CARD_TYPES.PI),
+                [CARD_TYPES.KWANG]: cards.filter(c => getEffectiveType(c) === CARD_TYPES.KWANG),
+                [CARD_TYPES.YUL]: cards.filter(c => getEffectiveType(c) === CARD_TYPES.YUL),
+                [CARD_TYPES.TTI]: cards.filter(c => getEffectiveType(c) === CARD_TYPES.TTI),
+                [CARD_TYPES.PI]: cards.filter(c => getEffectiveType(c) === CARD_TYPES.PI),
             };
+        }
+
+        function sortCapturedCards(cards, type) {
+            if (type === CARD_TYPES.TTI) {
+                const ribbonOrder = { [RIBBON_TYPES.RED_POETRY]: 0, [RIBBON_TYPES.BLUE]: 1, [RIBBON_TYPES.RED_PLAIN]: 2, [RIBBON_TYPES.RAIN]: 3 };
+                return cards.slice().sort((a, b) => {
+                    const ra = ribbonOrder[a.ribbon] ?? 4;
+                    const rb = ribbonOrder[b.ribbon] ?? 4;
+                    if (ra !== rb) return ra - rb;
+                    return a.month - b.month;
+                });
+            }
+            if (type === CARD_TYPES.PI) {
+                return cards.slice().sort((a, b) => {
+                    if (a.isSpecial && !b.isSpecial) return -1;
+                    if (!a.isSpecial && b.isSpecial) return 1;
+                    if (a.isDoublePi && !b.isDoublePi) return -1;
+                    if (!a.isDoublePi && b.isDoublePi) return 1;
+                    return a.month - b.month;
+                });
+            }
+            return cards.slice().sort((a, b) => a.month - b.month);
         }
 
         function renderCapturedArea(elementId, cards, title, score) {
             const container = document.getElementById(elementId);
+            const isPlayer = elementId.includes('player');
             const grouped = groupCaptured(cards);
+
             let html = `
-                <div class="flex flex-col justify-center items-center min-w-[60px] px-2 py-1 rounded-lg bg-black/40 text-emerald-100 border border-white/10 shadow-inner">
+                <div class="flex flex-col items-center justify-center p-1.5 rounded-lg bg-black/40 text-emerald-100 border border-white/10 shadow-inner mb-2 shrink-0">
                     <h3 class="font-bold text-[10px] uppercase text-emerald-400 tracking-wider">${title}</h3>
                     <p class="text-2xl font-black text-white leading-none drop-shadow">${score}</p>
                 </div>
-                <div class="flex gap-3 flex-1 overflow-x-auto no-scrollbar items-center py-1">
+                <div class="flex flex-col gap-1.5">
             `;
+
             for (const [type, typeCards] of Object.entries(grouped)) {
                 if (typeCards.length === 0) continue;
+                const meta = GROUP_META[type];
+                const sorted = sortCapturedCards(typeCards, type);
+                const preview = sorted.slice(0, 3);
+                const hasSpecial = sorted.some(c => c.isSpecial);
+
+                // Godori badge when 3 bird Yuls are held
+                let godoriBadge = '';
+                if (type === CARD_TYPES.YUL) {
+                    const birdCount = typeCards.filter(c => c.isBird).length;
+                    if (birdCount === 3) {
+                        godoriBadge = `<span class="text-[8px] font-black text-emerald-200 bg-emerald-700 px-1 rounded animate-pulse">GODORI +5</span>`;
+                    }
+                }
+
                 html += `
-                    <div class="flex items-center bg-black/30 rounded-lg px-2 py-1 h-full border border-white/5">
-                        <span class="text-[9px] font-black text-emerald-500/80 w-8 uppercase truncate mr-2">${type}</span>
-                        <div class="flex -space-x-8">
-                            ${typeCards.map(c => `<div class="transform scale-[0.55] sm:scale-[0.6] origin-left drop-shadow hover:z-20 hover:-translate-y-2 transition-transform">${createCardHTML(c)}</div>`).join('')}
+                    <div class="flex flex-col ${meta.bg} rounded-lg p-1.5 border ${meta.border} cursor-pointer hover:brightness-125 hover:scale-[1.02] active:scale-[0.99] transition-all"
+                         onclick="showGroupPopup('${type}', ${isPlayer})"
+                         title="Click to enlarge">
+                        <div class="flex items-center gap-1 mb-1">
+                            <span class="text-sm drop-shadow">${meta.icon}</span>
+                            <span class="text-[9px] font-black ${meta.color} uppercase tracking-wider">${meta.label}</span>
+                            ${hasSpecial ? `<span class="text-[8px] font-black text-yellow-300 bg-yellow-900/50 px-1 rounded">⚡</span>` : ''}
+                            ${godoriBadge}
+                            <span class="text-[9px] font-bold text-white/60 ml-auto bg-black/30 px-1 rounded">${typeCards.length}</span>
+                        </div>
+                        <div class="flex justify-center py-0.5">
+                            <div class="relative" style="width: 60px; height: 86px;">
+                                ${preview.map((c, i) => {
+                                    const offset = i * 3;
+                                    const z = 10 - i;
+                                    return `<div class="absolute top-0 left-0 origin-top-left" style="transform: translate(${offset}px, ${offset}px) scale(0.7); z-index: ${z};">${createCardHTML(c)}</div>`;
+                                }).reverse().join('')}
+                            </div>
                         </div>
                     </div>`;
             }
+
             html += `</div>`;
             container.innerHTML = html;
         }
 
-        async function animateGhostCard(card, startElId, endElId, delay = 350) {
-            const startEl = document.getElementById(startElId);
-            const endEl = document.getElementById(endElId);
-            if (!startEl || !endEl) return;
+        function showGroupPopup(type, isPlayer) {
+            const allCards = isPlayer ? state.playerCaptured : state.computerCaptured;
+            const typeCards = allCards.filter(c => getEffectiveType(c) === type);
+            if (typeCards.length === 0) return;
 
-            const startRect = startEl.getBoundingClientRect();
-            const endRect = endEl.getBoundingClientRect();
+            const sorted = sortCapturedCards(typeCards, type);
 
-            const ghost = document.createElement('div');
-            ghost.className = 'card-ghost shadow-2xl';
-            ghost.innerHTML = createCardHTML(card);
-            ghost.style.left = `${startRect.left}px`;
-            ghost.style.top = `${startRect.top}px`;
-            ghost.style.width = `${startRect.width}px`;
-            ghost.style.height = `${startRect.height}px`;
+            const existing = document.getElementById('group-popup');
+            if (existing) existing.remove();
 
-            document.body.appendChild(ghost);
-            void ghost.offsetWidth; // Force reflow
+            const meta = GROUP_META[type];
+            const ownerLabel = isPlayer ? 'Player' : 'CPU';
+            const specialCard = sorted.find(c => c.isSpecial);
 
-            ghost.style.left = `${endRect.left + (endRect.width/2 - startRect.width/2)}px`;
-            ghost.style.top = `${endRect.top + (endRect.height/2 - startRect.height/2)}px`;
-            ghost.style.transform = `scale(1.05) rotate(${Math.random() > 0.5 ? 5 : -5}deg)`;
+            let specialToggleHtml = '';
+            if (specialCard) {
+                const isPiMode = specialCard.countAs === 'pi';
+                specialToggleHtml = `
+                    <div class="flex items-center justify-center gap-2 mb-3 p-2 bg-yellow-500/15 border border-yellow-400/40 rounded-lg">
+                        <span class="text-xs font-bold text-yellow-200">Month 9 special card — count as:</span>
+                        <button onclick="toggleSpecial('${specialCard.id}'); showGroupPopup('${type}', ${isPlayer});"
+                                class="px-3 py-1 rounded-lg font-black text-xs transition-all ${isPiMode ? 'bg-red-600 text-white shadow-lg scale-105' : 'bg-black/40 text-red-300 hover:bg-black/60'}">
+                            2 Pi
+                        </button>
+                        <button onclick="toggleSpecial('${specialCard.id}'); showGroupPopup('${type}', ${isPlayer});"
+                                class="px-3 py-1 rounded-lg font-black text-xs transition-all ${!isPiMode ? 'bg-emerald-600 text-white shadow-lg scale-105' : 'bg-black/40 text-emerald-300 hover:bg-black/60'}">
+                            1 Yul
+                        </button>
+                    </div>
+                `;
+            }
 
-            await sleep(delay);
-            ghost.remove();
+            // Godori info line
+            let godoriLine = '';
+            if (type === CARD_TYPES.YUL) {
+                const birdCount = typeCards.filter(c => c.isBird).length;
+                if (birdCount === 3) {
+                    godoriLine = `<div class="text-center text-emerald-300 text-xs font-bold mb-2">🌟 GODORI — 3 bird cards = 5 points</div>`;
+                } else if (birdCount > 0) {
+                    godoriLine = `<div class="text-center text-white/50 text-[11px] mb-2">${birdCount}/3 bird cards for Godori (+5)</div>`;
+                }
+            }
+
+            const popup = document.createElement('div');
+            popup.id = 'group-popup';
+            popup.className = 'fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-[200] p-4 cursor-pointer';
+            popup.onclick = () => popup.remove();
+
+            popup.innerHTML = `
+                <div class="popup-in bg-emerald-900 border-2 ${meta.border} rounded-2xl p-5 sm:p-6 max-w-4xl w-full max-h-[85vh] overflow-y-auto shadow-2xl cursor-default"
+                     onclick="event.stopPropagation()">
+                    <div class="flex items-center gap-3 mb-3 sticky top-0 bg-emerald-900 pb-2 -mt-1 z-10">
+                        <span class="text-3xl">${meta.icon}</span>
+                        <h2 class="text-2xl font-black ${meta.color} uppercase tracking-wider">${meta.label}</h2>
+                        <span class="text-xs font-bold text-white/70 bg-black/30 px-2 py-1 rounded">${typeCards.length} card${typeCards.length>1?'s':''}</span>
+                        <span class="text-xs font-bold text-white/50 ml-auto uppercase tracking-wider">${ownerLabel}</span>
+                        <button class="text-white/60 hover:text-white text-2xl font-black leading-none px-2 -mr-1"
+                                onclick="document.getElementById('group-popup').remove()">×</button>
+                    </div>
+                    ${specialToggleHtml}
+                    ${godoriLine}
+                    <div class="flex flex-wrap gap-3 justify-center py-2">
+                        ${sorted.map(c => `
+                            <div class="relative shrink-0 w-[120px] h-[172px]">
+                                <div class="absolute top-0 left-0 origin-top-left" style="transform: scale(1.5);">
+                                    ${createCardHTML(c)}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <p class="text-center text-[11px] text-white/40 mt-4">Click anywhere outside the panel to close</p>
+                </div>
+            `;
+
+            document.body.appendChild(popup);
+        }
+
+        function highlightMatches(month) {
+            document.querySelectorAll('#table-cards [id^="tb-"]').forEach(el => {
+                const card = state.table.find(c => c.id === el.id.slice(3));
+                if (!card) return;
+                if (card.month === month) el.classList.add('match-highlight');
+                else el.classList.add('dim-card');
+            });
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('#table-cards [id^="tb-"]').forEach(el => {
+                el.classList.remove('match-highlight', 'dim-card');
+            });
+        }
+
+        function pulseTableCards(ids) {
+            ids.forEach(id => {
+                const el = document.getElementById(`tb-${id}`);
+                if (el) el.classList.add('match-pulse');
+            });
+        }
+
+        function animateGhostFromRect(card, startRect, endRect, duration = 400, fadeOut = false, targetScale = 1.05) {
+            return new Promise(resolve => {
+                if (!startRect || !endRect) { resolve(); return; }
+
+                const ghost = document.createElement('div');
+                ghost.className = 'card-ghost';
+                ghost.style.transition =
+                    `left ${duration}ms cubic-bezier(0.22,1,0.36,1), ` +
+                    `top ${duration}ms cubic-bezier(0.22,1,0.36,1), ` +
+                    `transform ${duration}ms cubic-bezier(0.22,1,0.36,1), ` +
+                    `opacity 160ms linear`;
+                ghost.innerHTML = createCardHTML(card);
+                ghost.style.left = `${startRect.left}px`;
+                ghost.style.top = `${startRect.top}px`;
+                ghost.style.width = `${startRect.width}px`;
+                ghost.style.height = `${startRect.height}px`;
+                document.body.appendChild(ghost);
+                void ghost.offsetWidth;
+
+                const targetLeft = endRect.left + (endRect.width - startRect.width) / 2;
+                const targetTop = endRect.top + (endRect.height - startRect.height) / 2;
+
+                ghost.style.left = `${targetLeft}px`;
+                ghost.style.top = `${targetTop}px`;
+                ghost.style.transform = `rotate(${Math.random() > 0.5 ? 4 : -4}deg) scale(${targetScale})`;
+
+                setTimeout(() => {
+                    if (fadeOut) {
+                        ghost.style.opacity = '0';
+                        setTimeout(() => { ghost.remove(); resolve(); }, 170);
+                    } else {
+                        ghost.remove();
+                        resolve();
+                    }
+                }, duration);
+            });
         }
 
         function promptUserSelection(cardsToChooseFrom) {
             return new Promise(resolve => {
-                document.getElementById('game-message').innerText = "Select a card to capture!";
+                state.statusText = "Select a card to capture!";
+                document.getElementById('game-message').innerText = state.statusText;
+
                 cardsToChooseFrom.forEach(c => {
                     const el = document.getElementById(`tb-${c.id}`);
-                    if(el) {
+                    if (el) {
                         const innerCard = el.firstElementChild;
                         innerCard.classList.add('selectable-card');
                         innerCard.onclick = () => {
-                            // Clean up handlers
                             cardsToChooseFrom.forEach(c2 => {
                                 const el2 = document.getElementById(`tb-${c2.id}`);
-                                if(el2) {
+                                if (el2) {
                                     el2.firstElementChild.classList.remove('selectable-card');
                                     el2.firstElementChild.onclick = null;
                                 }
                             });
+                            state.statusText = null;
                             resolve(c);
                         };
                     }
@@ -311,9 +658,9 @@
         }
 
         async function processMatches(playedCard, playerType) {
-            let matches = state.table.filter(c => c.month === playedCard.month);
-            let captured = [];
-            
+            const matches = state.table.filter(c => c.month === playedCard.month);
+            const captured = [];
+
             if (matches.length === 3) {
                 captured.push(playedCard, ...matches);
                 state.table = state.table.filter(c => c.month !== playedCard.month);
@@ -322,7 +669,7 @@
                 if (playerType === 'player') {
                     chosen = await promptUserSelection(matches);
                 } else {
-                    chosen = matches.sort((a,b) => TYPE_RANK[b.type] - TYPE_RANK[a.type])[0]; // AI picks highest
+                    chosen = matches.slice().sort((a, b) => TYPE_RANK[b.type] - TYPE_RANK[a.type])[0];
                 }
                 captured.push(playedCard, chosen);
                 state.table = state.table.filter(c => c.id !== chosen.id);
@@ -335,98 +682,197 @@
             return captured;
         }
 
+        async function resolveCardPlacement(card, startRect, playerType, capturedKey, targetArea) {
+            const matches = state.table.filter(c => c.month === card.month);
+
+            if (matches.length === 0) {
+                state.table.push(card);
+                renderState();
+
+                const el = document.getElementById(`tb-${card.id}`);
+                if (el && startRect) {
+                    el.style.opacity = '0';
+                    const landRect = el.getBoundingClientRect();
+                    await animateGhostFromRect(card, startRect, landRect, 420);
+                    el.style.opacity = '1';
+                    el.classList.add('pop-in');
+                }
+                return [];
+            }
+
+            const matchRects = {};
+            matches.forEach(c => {
+                const el = document.getElementById(`tb-${c.id}`);
+                if (el) matchRects[c.id] = el.getBoundingClientRect();
+            });
+
+            pulseTableCards(matches.map(c => c.id));
+            await sleep(520);
+
+            const firstRect = matchRects[matches[0].id] || null;
+            await animateGhostFromRect(card, startRect, firstRect, 420);
+
+            const captured = await processMatches(card, playerType);
+
+            if (captured.length === 0) { renderState(); return []; }
+
+            state[capturedKey].push(...captured);
+            renderState();
+
+            const destEl = document.getElementById(targetArea);
+            const destRect = destEl ? destEl.getBoundingClientRect() : null;
+
+            captured.forEach(c => {
+                const src = (c.id === card.id) ? firstRect : (matchRects[c.id] || firstRect);
+                animateGhostFromRect(c, src, destRect, 380, true, 0.7);
+            });
+            await sleep(440);
+
+            return captured;
+        }
+
         function calculateScore(capturedCards) {
-            let kwangs = capturedCards.filter(c => c.type === CARD_TYPES.KWANG).length;
-            let yuls = capturedCards.filter(c => c.type === CARD_TYPES.YUL).length;
-            let ttis = capturedCards.filter(c => c.type === CARD_TYPES.TTI).length;
-            let pis = capturedCards.reduce((acc, c) => acc + (c.isDoublePi ? 2 : 1), 0);
+            const kwangs = capturedCards.filter(c => getEffectiveType(c) === CARD_TYPES.KWANG);
+            const yuls   = capturedCards.filter(c => getEffectiveType(c) === CARD_TYPES.YUL);
+            const ttis   = capturedCards.filter(c => getEffectiveType(c) === CARD_TYPES.TTI);
+
+            let piCount = 0;
+            capturedCards.forEach(c => {
+                if (getEffectiveType(c) === CARD_TYPES.PI) {
+                    piCount += (c.isDoublePi ? 2 : 1);
+                }
+            });
 
             let score = 0;
-            if (kwangs === 5) score += 15; else if (kwangs === 4) score += 4; else if (kwangs === 3) score += 3;
-            if (yuls >= 5) score += (yuls - 4);
-            if (ttis >= 5) score += (ttis - 4);
-            if (pis >= 10) score += (pis - 9);
+
+            // Kwang
+            if (kwangs.length === 5) score += 15;
+            else if (kwangs.length === 4) score += 4;
+            else if (kwangs.length === 3) {
+                const hasRainKwang = kwangs.some(c => c.month === 12);
+                score += hasRainKwang ? 2 : 3;
+            }
+
+            // Godori — 3 bird cards (months 2, 4, 8) = 5 points
+            const birdYuls = yuls.filter(c => c.isBird);
+            if (birdYuls.length === 3) score += 5;
+
+            // Yul count
+            if (yuls.length >= 5) score += (yuls.length - 4);
+
+            // Tti count
+            if (ttis.length >= 5) score += (ttis.length - 4);
+
+            // Ribbon sets
+            const redPoetry = ttis.filter(c => c.ribbon === RIBBON_TYPES.RED_POETRY).length;
+            const blue      = ttis.filter(c => c.ribbon === RIBBON_TYPES.BLUE).length;
+            const redPlain  = ttis.filter(c => c.ribbon === RIBBON_TYPES.RED_PLAIN).length;
+            if (redPoetry >= 3) score += 3;
+            if (blue >= 3)      score += 3;
+            if (redPlain >= 3)  score += 3;
+
+            // Pi count
+            if (piCount >= 10) score += (piCount - 9);
+
             return score;
         }
 
+        async function grantBonusPi(playerType) {
+            const opponentKey = playerType === 'player' ? 'computerCaptured' : 'playerCaptured';
+            const selfKey     = playerType === 'player' ? 'playerCaptured'   : 'computerCaptured';
+            const opponentCards = state[opponentKey];
+
+            let piIdx = opponentCards.findIndex(c => getEffectiveType(c) === CARD_TYPES.PI && !c.isDoublePi && !c.isSpecial);
+            if (piIdx === -1) piIdx = opponentCards.findIndex(c => getEffectiveType(c) === CARD_TYPES.PI);
+            if (piIdx === -1) return;
+
+            const stolen = opponentCards.splice(piIdx, 1)[0];
+            state[selfKey].push(stolen);
+
+            state.playerScore = calculateScore(state.playerCaptured);
+            state.computerScore = calculateScore(state.computerCaptured);
+
+            const who = playerType === 'player' ? 'You' : 'CPU';
+            state.statusText = `⚡ Self-match! ${who} took a Pi from the opponent.`;
+            renderState();
+
+            const sidebar = document.getElementById(selfKey === 'playerCaptured' ? 'player-captured-sidebar' : 'cpu-captured-sidebar');
+            if (sidebar) {
+                sidebar.classList.add('bonus-flash');
+                setTimeout(() => sidebar.classList.remove('bonus-flash'), 1300);
+            }
+
+            await sleep(700);
+        }
+
         async function handleCardClick(index) {
-            if (state.turn !== 'player' || state.isAnimating) return;
+            if (state.turn !== 'player' || state.isAnimating || state.gameOver) return;
             await playTurn('player', index);
         }
 
         async function playTurn(playerType, cardIndex) {
+            if (state.gameOver || state.isAnimating) return;
+
             state.isAnimating = true;
+            state.statusText = null;
             renderState();
 
-            const handKey = playerType === 'player' ? 'playerHand' : 'computerHand';
-            const capturedKey = playerType === 'player' ? 'playerCaptured' : 'computerCaptured';
-            const handPrefix = playerType === 'player' ? 'ph' : 'ch';
-            const targetArea = playerType === 'player' ? 'player-captured' : 'computer-captured';
+            const isPlayer = playerType === 'player';
+            const handKey     = isPlayer ? 'playerHand' : 'computerHand';
+            const capturedKey = isPlayer ? 'playerCaptured' : 'computerCaptured';
+            const handPrefix  = isPlayer ? 'ph' : 'ch';
+            const targetArea  = isPlayer ? 'player-captured-sidebar' : 'cpu-captured-sidebar';
 
-            // 1. Play Hand Card
             const playedCard = state[handKey][cardIndex];
-            const startId = `${handPrefix}-${playedCard.id}`;
-            
+            if (!playedCard) { state.isAnimating = false; return; }
+
+            const handHadMatch = state.table.some(c => c.month === playedCard.month);
+
+            const startEl = document.getElementById(`${handPrefix}-${playedCard.id}`);
+            const startRect = startEl ? startEl.getBoundingClientRect() : null;
+
             state[handKey].splice(cardIndex, 1);
-            if(document.getElementById(startId)) document.getElementById(startId).style.opacity = '0'; 
-
-            // Calculate destination on table based on match
-            let matches = state.table.filter(c => c.month === playedCard.month);
-            let targetId = matches.length > 0 ? `tb-${matches[0].id}` : 'table-cards';
-
-            await animateGhostCard(playedCard, startId, targetId, 350);
-            
-            let capturedHand = await processMatches(playedCard, playerType);
             renderState();
 
-            if (capturedHand.length > 0) {
-                await sleep(200);
-                await animateGhostCard(capturedHand[0], targetId, targetArea, 350);
-                state[capturedKey].push(...capturedHand);
-                renderState();
-            }
+            await resolveCardPlacement(playedCard, startRect, playerType, capturedKey, targetArea);
 
-            // 2. Draw Deck Card
+            let selfMatchBonus = false;
             if (state.deck.length > 0) {
-                await sleep(300);
+                await sleep(220);
+
                 const deckCard = state.deck.pop();
+
+                selfMatchBonus = !handHadMatch &&
+                                 state.table.some(c => c.id === playedCard.id && c.month === deckCard.month);
+
+                const deckEl = document.getElementById('deck-stack');
+                const deckRect = deckEl ? deckEl.getBoundingClientRect() : null;
                 renderState();
 
-                let deckMatches = state.table.filter(c => c.month === deckCard.month);
-                let deckTargetId = deckMatches.length > 0 ? `tb-${deckMatches[0].id}` : 'table-cards';
-
-                await animateGhostCard(deckCard, 'deck-stack', deckTargetId, 350);
-                
-                let capturedDeck = await processMatches(deckCard, playerType);
-                renderState();
-
-                if (capturedDeck.length > 0) {
-                    await sleep(200);
-                    await animateGhostCard(capturedDeck[0], deckTargetId, targetArea, 350);
-                    state[capturedKey].push(...capturedDeck);
-                    renderState();
-                }
+                await resolveCardPlacement(deckCard, deckRect, playerType, capturedKey, targetArea);
             }
 
-            // 3. Scoring & Validation
-            const currentScore = playerType === 'player' ? state.playerScore : state.computerScore;
+            const prevScore = isPlayer ? state.playerScore : state.computerScore;
             const newScore = calculateScore(state[capturedKey]);
-            
-            if (playerType === 'player') state.playerScore = newScore;
+            if (isPlayer) state.playerScore = newScore;
             else state.computerScore = newScore;
-            
+
             renderState();
-            await sleep(400);
+            await sleep(300);
+
+            if (selfMatchBonus) {
+                await grantBonusPi(playerType);
+            }
 
             if (state.playerHand.length === 0 && state.computerHand.length === 0) {
-                showGameOver();
+                endGame(null, 'No cards left on the table.');
                 return;
             }
 
-            if (newScore >= 7 && newScore > currentScore) {
+            if (newScore >= 7 && newScore > prevScore) {
                 state.pendingGoStop = playerType;
                 showGoStopModal(playerType, newScore);
-                return; 
+                return;
             }
 
             passTurn(playerType);
@@ -440,10 +886,12 @@
         }
 
         function playComputerTurn() {
+            if (state.gameOver) return;
             let bestIndex = 0;
             for (let i = 0; i < state.computerHand.length; i++) {
-                if (state.table.some(tCard => tCard.month === state.computerHand[i].month)) {
-                    bestIndex = i; break;
+                if (state.table.some(t => t.month === state.computerHand[i].month)) {
+                    bestIndex = i;
+                    break;
                 }
             }
             playTurn('computer', bestIndex);
@@ -457,85 +905,151 @@
             const modalInner = modal.querySelector('div');
 
             modal.classList.remove('hidden');
-            setTimeout(() => { modal.classList.remove('opacity-0'); modalInner.classList.remove('scale-90'); modalInner.classList.add('scale-100'); }, 10);
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalInner.classList.remove('scale-90');
+                modalInner.classList.add('scale-100');
+            }, 10);
 
             if (playerType === 'player') {
                 msg.innerText = `You reached ${score} points!`;
-                actions.classList.remove('hidden'); waiting.classList.add('hidden');
+                actions.classList.remove('hidden');
+                waiting.classList.add('hidden');
             } else {
                 msg.innerText = `Computer reached ${score} points!`;
-                actions.classList.add('hidden'); waiting.classList.remove('hidden');
-                setTimeout(() => handleStop(true), 2000); // Computer stops automatically for now
+                actions.classList.add('hidden');
+                waiting.classList.remove('hidden');
+                setTimeout(() => handleStop(true), 1600);
             }
         }
 
         function closeGoStopModal() {
             const modal = document.getElementById('modal-gostop');
+            if (!modal || modal.classList.contains('hidden')) return;
             const modalInner = modal.querySelector('div');
-            modal.classList.add('opacity-0'); modalInner.classList.remove('scale-100'); modalInner.classList.add('scale-90');
+            modal.classList.add('opacity-0');
+            modalInner.classList.remove('scale-100');
+            modalInner.classList.add('scale-90');
             setTimeout(() => { modal.classList.add('hidden'); }, 300);
         }
 
         function handleGo(isComputer = false) {
             closeGoStopModal();
-            state.message = `${isComputer ? 'Computer' : 'Player'} called GO!`;
             const prevPlayer = state.pendingGoStop;
             state.pendingGoStop = null;
+            state.statusText = `${isComputer ? 'Computer' : 'Player'} called GO!`;
             passTurn(prevPlayer);
         }
 
         function handleStop(isComputer = false) {
             closeGoStopModal();
-            showGameOver(isComputer ? 'Computer' : 'Player');
+            state.pendingGoStop = null;
+            endGame(isComputer ? 'Computer' : 'Player',
+                    `${isComputer ? 'The computer' : 'You'} called STOP.`);
         }
 
-        function showGameOver(winner = null) {
+        function endGame(winner = null, reason = '') {
             state.isAnimating = true;
-            if (!winner) {
-                winner = state.playerScore > state.computerScore ? 'Player' : state.computerScore > state.playerScore ? 'Computer' : 'Draw';
-            }
+            state.gameOver = true;
 
-            const modal = document.getElementById('modal-gameover');
+            if (!winner) {
+                winner = state.playerScore > state.computerScore ? 'Player'
+                       : state.computerScore > state.playerScore ? 'Computer'
+                       : 'Draw';
+            }
+            state.winner = winner;
+            state.endReason = reason;
+
+            renderState();
+            showGameOverModal();
+        }
+
+        function updateGameOverModal() {
             const title = document.getElementById('gameover-title');
             const msg = document.getElementById('gameover-message');
-            const modalInner = modal.querySelector('div');
 
             document.getElementById('gameover-player-score').innerText = state.playerScore;
             document.getElementById('gameover-computer-score').innerText = state.computerScore;
 
-            if (winner === 'Player') {
-                title.innerText = 'You Win!'; title.className = "text-5xl font-black mb-1 uppercase text-emerald-600";
-            } else if (winner === 'Computer') {
-                title.innerText = 'CPU Wins!'; title.className = "text-5xl font-black mb-1 uppercase text-rose-600";
+            if (state.winner === 'Player') {
+                title.innerText = 'You Win!';
+                title.className = 'text-5xl font-black mb-1 uppercase text-emerald-600';
+            } else if (state.winner === 'Computer') {
+                title.innerText = 'CPU Wins!';
+                title.className = 'text-5xl font-black mb-1 uppercase text-rose-600';
             } else {
-                title.innerText = 'Draw!'; title.className = "text-5xl font-black mb-1 uppercase text-slate-600";
+                title.innerText = 'Draw!';
+                title.className = 'text-5xl font-black mb-1 uppercase text-slate-600';
             }
 
-            msg.innerText = winner === 'Draw' ? "No cards left." : `${winner} called STOP.`;
-
-            modal.classList.remove('hidden');
-            setTimeout(() => { modal.classList.remove('opacity-0'); modalInner.classList.remove('scale-90'); modalInner.classList.add('scale-100'); }, 10);
+            msg.innerText = state.endReason || '';
         }
 
-        function closeGameOverModal() {
+        function showGameOverModal() {
+            if (!state.gameOver) return;
+            updateGameOverModal();
+
             const modal = document.getElementById('modal-gameover');
             const modalInner = modal.querySelector('div');
-            modal.classList.add('opacity-0'); modalInner.classList.remove('scale-100'); modalInner.classList.add('scale-90');
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalInner.classList.remove('scale-90');
+                modalInner.classList.add('scale-100');
+            }, 10);
+
+            document.getElementById('btn-view-results').classList.add('hidden');
+        }
+
+        function hideGameOverModal() {
+            const modal = document.getElementById('modal-gameover');
+            const modalInner = modal.querySelector('div');
+
+            modal.classList.add('opacity-0');
+            modalInner.classList.remove('scale-100');
+            modalInner.classList.add('scale-90');
             setTimeout(() => { modal.classList.add('hidden'); }, 300);
+
+            document.getElementById('btn-view-results').classList.remove('hidden');
         }
 
         function startNewGame() {
-            closeGameOverModal(); closeGoStopModal();
+            const popup = document.getElementById('group-popup');
+            if (popup) popup.remove();
+
+            hideGameOverModal();
+            document.getElementById('modal-gameover').classList.add('hidden');
+            document.getElementById('btn-view-results').classList.add('hidden');
+            closeGoStopModal();
+            clearHighlights();
+
             let deck = BASE_DECK.map((c, i) => ({ ...c, id: `c_${i}` }));
             for (let i = deck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [deck[i], deck[j]] = [deck[j], deck[i]];
             }
+
+            const sortHand = (a, b) => (a.month - b.month) || (TYPE_RANK[b.type] - TYPE_RANK[a.type]);
+
             state = {
-                deck: deck.splice(0, 20), playerHand: deck.splice(0, 10), computerHand: deck.splice(0, 10), table: deck.splice(0, 8),
-                playerCaptured: [], computerCaptured: [], playerScore: 0, computerScore: 0,
-                turn: 'player', message: 'Game started!', isAnimating: false, pendingGoStop: null
+                deck: deck.splice(0, 20),
+                playerHand: deck.splice(0, 10).sort(sortHand),
+                computerHand: deck.splice(0, 10).sort(sortHand),
+                table: deck.splice(0, 8),
+                playerCaptured: [],
+                computerCaptured: [],
+                playerScore: 0,
+                computerScore: 0,
+                turn: 'player',
+                isAnimating: false,
+                pendingGoStop: null,
+                statusText: 'Game started!',
+                gameOver: false,
+                winner: null,
+                endReason: ''
             };
+
             renderState();
         }
 
