@@ -13,9 +13,9 @@
 
 <body class="min-h-screen flex flex-col">
   <header class="bg-black/40 p-4 shadow-md flex justify-between items-center border-b border-green-800">
-    <div class="flex items-center gap-3"><a href="index.html" id="btnHome" title="Back to menu"
-        aria-label="Back to menu"
-        class="text-lg leading-none bg-black/40 hover:bg-black/60 px-2 py-1 rounded text-gray-200 no-underline">⌂</a>
+    <div class="flex items-center gap-3"><button type="button" id="btnHome" title="Play with a friend (2 player)"
+        aria-label="2 player invite"
+        class="text-xs font-bold leading-none bg-black/40 hover:bg-black/60 px-2 py-2 rounded text-green-300 no-underline border border-green-700">2P</button>
       <h1 class="text-xl font-bold text-green-400 drop-shadow-md">KO Trainer Pro</h1>
     </div>
     <div class="flex gap-2 sm:gap-3 flex-wrap justify-end items-center">
@@ -309,6 +309,8 @@
   </div>
   
   <script src="ko-blackjack.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
+  <script src="multiplayer.js" defer></script>
 </body>
 
 </html>
