@@ -95,6 +95,37 @@
     else if (key === 'ArrowUp' || key === 'w' || key === 'W') { e.preventDefault(); select(cur - 1); }
     else if (key === 'Enter' || key === ' ') { e.preventDefault(); items[cur].click(); }
   });
+  /* on-screen buttons */
+  function step(n) { select(cur + n); }
+  function press(id, fn) { $(id).addEventListener('click', function () { fn(); this.blur(); }); }
+  press('btnUp', function () { step(-1); });
+  press('btnDown', function () { step(1); });
+  press('btnGo', function () { items[cur].click(); });
+
+  /* mouse wheel */
+  var wheelAt = 0;
+  document.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    var t = Date.now();
+    if (!e.deltaY || t - wheelAt < 110) return;
+    wheelAt = t; step(e.deltaY > 0 ? 1 : -1);
+  }, {passive: false});
+
+  /* finger swipe anywhere: drag up = move down the list (like scrolling) */
+  var ui = document.querySelector('.ui'), sy = null, moved = false, STEP = 26;
+  ui.addEventListener('touchstart', function (e) {
+    if (e.target.closest && e.target.closest('.pbtn')) return;
+    sy = e.touches[0].clientY; moved = false;
+  }, {passive: true});
+  ui.addEventListener('touchmove', function (e) {
+    if (sy === null) return;
+    var d = sy - e.touches[0].clientY;
+    if (Math.abs(d) >= STEP) { var n = Math.trunc(d / STEP); step(n); sy -= n * STEP; moved = true; }
+    else if (Math.abs(d) > 8) moved = true;
+  }, {passive: true});
+  ui.addEventListener('touchend', function () { sy = null; }, {passive: true});
+  $('menu').addEventListener('click', function (e) { if (moved) { e.preventDefault(); moved = false; } });  /* a swipe isn't a tap */
+
   select(0, true);
 
   /* ---- "HELLO YOU..." title ---- */

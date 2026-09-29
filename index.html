@@ -40,7 +40,12 @@
     </ul>
   </nav>
   <p class="hint" id="hint">&nbsp;</p>
-  <p class="keys">SELECT &nbsp;&middot;&nbsp; START</p>
+  <div class="pad" role="group" aria-label="On-screen controls">
+    <button type="button" class="pbtn" id="btnUp" aria-label="Up" tabindex="-1">&#9650;</button>
+    <button type="button" class="pbtn go" id="btnGo" aria-label="Start" tabindex="-1">START</button>
+    <button type="button" class="pbtn" id="btnDown" aria-label="Down" tabindex="-1">&#9660;</button>
+  </div>
+  <ul class="players" aria-hidden="true"><li class="on">PLAYER 1</li><li>PLAYER 2</li></ul>
 </main>
 
 <script src="menu.js"></script>
