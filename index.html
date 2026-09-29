@@ -1,388 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#070b09">
-    <title>nightowl</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a472a'/%3E%3Ctext x='32' y='47' font-size='40' text-anchor='middle' fill='white'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #070b09;
-            --fg: #f2f5f3;
-            --muted: #6f7c75;
-            --accent: #4ade80;
-            --row: 64px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        html {
-            background: var(--bg);
-            height: 100%;
-        }
-
-        body {
-            min-height: 100vh;
-            min-height: 100dvh;
-            background:
-                radial-gradient(ellipse at 50% 42%, rgba(74, 222, 128, 0.07), transparent 60%),
-                var(--bg);
-            color: var(--fg);
-            font-family: 'Press Start 2P', 'Courier New', monospace;
-            -webkit-font-smoothing: none;
-            -webkit-tap-highlight-color: transparent;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;       /* perfectly centered vertically */
-            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-            /* remove grid rows – now flex column, centered both axes */
-            gap: 0;                         /* control spacing via margins */
-        }
-
-        /* single centering container – holds weather + hello + menu */
-        .center-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            max-width: 600px;               /* keeps things comfortable */
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-
-        .weather {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 16px;
-            border: 1px solid rgba(74, 222, 128, 0.25);
-            border-radius: 999px;
-            background: rgba(74, 222, 128, 0.05);
-            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-            font-size: 0.82rem;
-            letter-spacing: 0.02em;
-            color: var(--fg);
-            opacity: 0;
-            animation: fadeIn 0.8s ease-out 0.2s forwards;
-            text-align: center;
-            max-width: 90vw;
-            margin-bottom: 18px;            /* was gap in old flex, now explicit */
-        }
-        .weather .penguin {
-            font-size: 1.35rem;
-            line-height: 1;
-            filter: drop-shadow(0 0 6px rgba(74, 222, 128, 0.35));
-        }
-        .weather .label {
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.14em;
-            font-size: 0.6rem;
-            display: block;
-            margin-bottom: 2px;
-        }
-        .weather .value {
-            font-weight: 500;
-            color: var(--fg);
-        }
-        .weather .value .temp {
-            color: var(--accent);
-            font-weight: 600;
-        }
-        .weather .value .sep {
-            color: var(--muted);
-            margin: 0 6px;
-        }
-        .weather .value .wind {
-            color: #93c5fd;
-        }
-
-        .hello {
-            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            font-size: clamp(2.4rem, 9vw, 4.25rem);
-            font-weight: 300;
-            letter-spacing: -0.02em;
-            text-align: center;
-            min-height: 1.2em;
-            line-height: 1.15;
-            text-shadow: 0 0 24px rgba(74, 222, 128, 0.18);
-            margin-bottom: 28px;            /* space before menu */
-        }
-
-        .hello .dots {
-            display: inline-block;
-            width: 1.5em;
-            text-align: left;
-        }
-
-        .menu {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-        }
-
-        .picker {
-            position: relative;
-            width: min(360px, 88vw);
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            overflow: hidden;
-        }
-
-        .opt {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: var(--row);
-            color: var(--muted);
-            text-decoration: none;
-            font-size: 0.95rem;
-            font-weight: 400;
-            letter-spacing: 0.05em;
-            transform: scale(0.94);
-            transition: color 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
-            border-radius: 8px;
-            cursor: pointer;
-            position: relative;
-            outline: none;
-            padding: 0 12px;
-            text-align: center;
-        }
-        .opt small {
-            font-size: 0.55rem;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            margin-top: 6px;
-            color: var(--muted);
-            opacity: 0.85;
-        }
-        .opt.active,
-        .opt:hover,
-        .opt:focus-visible {
-            color: var(--fg);
-            transform: scale(1);
-            background-color: rgba(74, 222, 128, 0.08);
-        }
-        .opt.active.live,
-        .opt.active.live small { color: var(--accent); }
-        .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-
-        .opt::before {
-            content: "";
-            position: absolute;
-            left: -16px;
-            top: 50%;
-            width: 8px;
-            height: 8px;
-            margin-top: -4px;
-            background: var(--accent);
-            opacity: 0;
-            transform: scale(0.5);
-            transition: opacity 0.2s ease, transform 0.2s ease;
-            box-shadow: 0 0 8px var(--accent);
-        }
-        .opt.active::before,
-        .opt:hover::before,
-        .opt:focus-visible::before {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-        @keyframes fadeIn {
-            to { opacity: 1; }
-        }
-
-        /* small screens – keep everything tight and centered */
-        @media (max-height: 600px) {
-            :root { --row: 52px; }
-            .opt { font-size: 0.75rem; }
-            .opt small { font-size: 0.45rem; }
-            .hello { font-size: 2rem; margin-bottom: 16px; }
-            .weather { font-size: 0.7rem; padding: 6px 12px; margin-bottom: 12px; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .opt { transition: none; }
-            .weather { animation: none; opacity: 1; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0620">
+<title>nightowl</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a472a'/%3E%3Ctext x='32' y='47' font-size='40' text-anchor='middle' fill='white'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="menu.css">
 </head>
 <body>
-    <!-- one wrapper to center everything, both axes -->
-    <div class="center-wrapper">
-        <div class="weather" id="weather" aria-live="polite">
-            <span class="penguin" aria-hidden="true">🐧</span>
-            <div>
-                <span class="label">Antarctica · Today</span>
-                <span class="value" id="weatherValue">Loading…</span>
-            </div>
-        </div>
+<div class="stage" id="stage" aria-hidden="true">
+  <div class="stars"></div>
+  <div class="hill back"></div><div class="hill front"></div>
+  <div class="ground"></div>
+  <div class="hero" id="hero"></div>
+</div>
 
-        <h1 class="hello" id="hello" aria-label="Hello you"></h1>
+<main class="ui">
+  <div class="weather" aria-live="polite">
+    <span class="penguin" aria-hidden="true">🐧</span>
+    <div><small>ANTARCTICA · TODAY</small><b id="weather">LOADING...</b></div>
+  </div>
+  <h1 class="logo" id="hello" aria-label="Hello you">HELLO YOU</h1>
+  <nav aria-label="Choose something to open">
+    <ul class="menu" id="menu">
+      <li><a href="https://news.google.com" target="_blank" rel="noopener noreferrer" data-hint="Trump Stahp..">News</a></li>
+      <li><a href="ko-blackjack.html" target="_blank" rel="noopener noreferrer" data-hint="Card counting trainer">KO Blackjack</a></li>
+      <li><a href="https://www.chess.com" target="_blank" rel="noopener noreferrer" data-hint="Chess.com">Chess</a></li>
+      <li><a href="https://fmhy.net/video#stream-aggregators" target="_blank" rel="noopener noreferrer" data-hint="Choose stars..">Movies</a></li>
+      <li><a href="https://fmhy.net/video#anime-streaming" target="_blank" rel="noopener noreferrer" data-hint="Choose stars..">Anime</a></li>
+      <li><a href="https://fmhy.net/audio#audio-ripping" target="_blank" rel="noopener noreferrer" data-hint="Choose stars..">Music</a></li>
+      <li><a href="https://beetv.foo/" target="_blank" rel="noopener noreferrer" data-hint="한국">Korea</a></li>
+      <li><a href="https://jellyfin.org/" target="_blank" rel="noopener noreferrer" data-hint="Dont click this">wip</a></li>
+      <li><a href="https://www.navidrome.org/" target="_blank" rel="noopener noreferrer" data-hint="Dont click this">wip</a></li>
+      <li><a href="https://www.merriam-webster.com/dictionary/procrastinate" target="_blank" rel="noopener noreferrer" data-hint="Later..">procrastinating..</a></li>
+    </ul>
+  </nav>
+  <p class="hint" id="hint">&nbsp;</p>
+  <p class="keys">&#9650;&#9660; SELECT &nbsp; ENTER START</p>
+</main>
 
-        <nav class="menu" aria-label="Choose something to open">
-            <div class="picker" id="picker" role="list">
-                <a class="opt" role="listitem" href="https://news.google.com" target="_blank" rel="noopener noreferrer">News<small>Trump Stahp..</small></a>
-                <a class="opt live" role="listitem" href="ko-blackjack.html" target="_blank" rel="noopener noreferrer">**KO Blackjack**<small>Card counting trainer</small></a>
-                <a class="opt" role="listitem" href="https://www.chess.com" target="_blank" rel="noopener noreferrer">Chess<small>Chess.com</small></a>
-                <a class="opt" role="listitem" href="https://fmhy.net/video#stream-aggregators" target="_blank" rel="noopener noreferrer">Movies<small>choose stars..</small></a>
-                <a class="opt" role="listitem" href="https://fmhy.net/video#anime-streaming" target="_blank" rel="noopener noreferrer">Anime<small>choose stars..</small></a>
-                <a class="opt" role="listitem" href="https://fmhy.net/audio#audio-ripping" target="_blank" rel="noopener noreferrer">Music<small>choose stars..</small></a>
-                <a class="opt" role="listitem" href="https://beetv.foo/" target="_blank" rel="noopener noreferrer">Korea<small>한국</small></a>
-                <a class="opt" role="listitem" href="https://jellyfin.org/" target="_blank" rel="noopener noreferrer">wip<small>dont click this</small></a>
-                <a class="opt" role="listitem" href="https://www.navidrome.org/" target="_blank" rel="noopener noreferrer">wip<small>dont click this</small></a>
-                <a class="opt" role="listitem" href="https://www.merriam-webster.com/dictionary/procrastinate" target="_blank" rel="noopener noreferrer">procrastinating..<small>later..</small></a>
-            </div>
-        </nav>
-    </div>
-
-    <script>
-        (function () {
-            var picker = document.getElementById('picker');
-            var opts = Array.prototype.slice.call(picker.querySelectorAll('.opt'));
-            var activeIndex = 0;
-
-            function setActive(i) {
-                activeIndex = i;
-                opts.forEach(function (o, idx) { o.classList.toggle('active', idx === i); });
-            }
-
-            opts.forEach(function (o, i) {
-                o.addEventListener('mouseenter', function () { setActive(i); });
-                o.addEventListener('focus', function () { setActive(i); });
-            });
-
-            picker.addEventListener('keydown', function (e) {
-                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    var next = Math.max(0, Math.min(opts.length - 1, activeIndex + (e.key === 'ArrowDown' ? 1 : -1)));
-                    setActive(next);
-                    opts[next].focus();
-                } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    var target = opts[activeIndex];
-                    if (target) {
-                        if (target.target === '_blank') {
-                            window.open(target.href, '_blank', 'noopener,noreferrer');
-                        } else {
-                            window.location.href = target.href;
-                        }
-                    }
-                }
-            });
-
-            setActive(activeIndex);
-
-            var helloEl = document.getElementById('hello');
-            var text = 'Hello you';
-            var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-            function renderHello(typed, dots) {
-                helloEl.innerHTML = typed + '<span class="dots">' + '.'.repeat(dots) + '</span>';
-            }
-
-            if (reduceMotion) {
-                renderHello(text, 3);
-            } else {
-                var i = 0;
-                renderHello('', 0);
-
-                function typeNext() {
-                    if (i < text.length) {
-                        i++;
-                        renderHello(text.slice(0, i), 0);
-                        setTimeout(typeNext, 90);
-                    } else {
-                        startDots();
-                    }
-                }
-
-                var dotCount = 1;
-                var dotDir = 1;
-                function startDots() {
-                    renderHello(text, dotCount);
-                    setTimeout(function () {
-                        dotCount += dotDir;
-                        if (dotCount >= 3) { dotCount = 3; dotDir = -1; }
-                        else if (dotCount <= 1) { dotCount = 1; dotDir = 1; }
-                        startDots();
-                    }, 400);
-                }
-
-                setTimeout(typeNext, 300);
-            }
-
-            var weatherValueEl = document.getElementById('weatherValue');
-
-            function describeWeatherCode(code) {
-                if (code === 0) return 'Clear';
-                if (code >= 1 && code <= 3) return 'Cloudy';
-                if (code === 45 || code === 48) return 'Fog';
-                if (code >= 51 && code <= 57) return 'Drizzle';
-                if (code >= 61 && code <= 67) return 'Rain';
-                if (code >= 71 && code <= 77) return 'Snow';
-                if (code >= 80 && code <= 82) return 'Showers';
-                if (code >= 85 && code <= 86) return 'Snow showers';
-                if (code >= 95) return 'Thunderstorm';
-                return 'Cloudy';
-            }
-
-            function renderWeather(tempF, windMph, code) {
-                var t = Math.round(tempF);
-                var w = Math.round(windMph);
-                var desc = describeWeatherCode(code);
-                weatherValueEl.innerHTML =
-                    '<span class="temp">' + t + '°F</span>' +
-                    '<span class="sep">·</span>' +
-                    '<span>' + desc + '</span>' +
-                    '<span class="sep">·</span>' +
-                    '<span class="wind">' + w + ' mph</span>';
-            }
-
-            function fetchWeather() {
-                var lat = -90;
-                var lon = 0;
-                var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat +
-                          '&longitude=' + lon +
-                          '&current=temperature_2m,wind_speed_10m,weather_code' +
-                          '&temperature_unit=fahrenheit' +
-                          '&wind_speed_unit=mph' +
-                          '&timezone=UTC';
-
-                fetch(url)
-                    .then(function (r) { return r.json(); })
-                    .then(function (data) {
-                        if (data && data.current) {
-                            renderWeather(
-                                data.current.temperature_2m,
-                                data.current.wind_speed_10m,
-                                data.current.weather_code
-                            );
-                        } else {
-                            weatherValueEl.textContent = 'Unavailable';
-                        }
-                    })
-                    .catch(function () {
-                        weatherValueEl.textContent = 'Unavailable';
-                    });
-            }
-
-            fetchWeather();
-            setInterval(fetchWeather, 15 * 60 * 1000);
-        })();
-    </script>
+<script src="menu.js"></script>
 </body>
 </html>
