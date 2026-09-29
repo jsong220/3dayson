@@ -61,7 +61,7 @@
     }
     place(); requestAnimationFrame(tick);
   }
-  if (reduce) { x = stage.clientWidth * 0.3; place(); } else requestAnimationFrame(tick);
+  requestAnimationFrame(tick);
 
   /* ---- shooting stars: streak across the sky now and then, then vanish ---- */
   function shoot() {
