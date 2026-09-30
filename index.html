@@ -1,54 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b0620">
-<title>nightowl</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a472a'/%3E%3Ctext x='32' y='47' font-size='40' text-anchor='middle' fill='white'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="menu.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0620">
+  <title>nightowl</title>
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a472a'/%3E%3Ctext x='32' y='47' font-size='40' text-anchor='middle' fill='white'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="menu.css">
 </head>
+
 <body>
-<div class="stage" id="stage" aria-hidden="true">
-  <div class="stars"></div>
-  <div class="hill back"></div><div class="hill front"></div>
-  <div class="ground"></div>
-  <div class="hero" id="hero"></div>
-</div>
-
-<main class="ui">
-  <div class="weather" aria-live="polite">
-    <span class="penguin" aria-hidden="true">🐧</span>
-    <div><small>ANTARCTICA · TODAY</small><b id="weather">LOADING...</b></div>
+  <div class="stage" id="stage" aria-hidden="true">
+    <div class="stars"></div>
+    <div class="hill back"></div>
+    <div class="hill front"></div>
+    <div class="ground"></div>
+    <div class="hero" id="hero"></div>
   </div>
-  <h1 class="logo" id="hello" aria-label="Hello you">HELLO YOU</h1>
-  <nav aria-label="Choose something to open">
-    <ul class="menu" id="menu">
-      <li><a href="https://news.google.com" target="_blank" rel="noopener noreferrer" data-hint="Trump Stahp..">News</a></li>
-      <li><a href="ko-blackjack.html" target="_blank" rel="noopener noreferrer" data-hint="Card counting trainer">KO Blackjack</a></li>
-      <li><a href="go-stop.html" target="_blank" rel="noopener noreferrer" data-hint="Hwatu vs the CPU">Go-Stop</a></li>
-      <li><a href="https://www.chess.com" target="_blank" rel="noopener noreferrer" data-hint="Chess.com">Chess</a></li>
-      <li><a href="https://fmhy.net/video#stream-aggregators" target="_blank" rel="noopener noreferrer" data-hint="Choose stars..">Movies</a></li>
-      <li><a href="https://fmhy.net/video#anime-streaming" target="_blank" rel="noopener noreferrer" data-hint="Choose stars..">Anime</a></li>
-      <li><a href="https://fmhy.net/audio#audio-ripping" target="_blank" rel="noopener noreferrer" data-hint="Choose stars..">Music</a></li>
-      <li><a href="https://beetv.foo/" target="_blank" rel="noopener noreferrer" data-hint="한국">Korea</a></li>
-      <li><a href="https://jellyfin.org/" target="_blank" rel="noopener noreferrer" data-hint="Dont click this">wip</a></li>
-      <li><a href="https://www.navidrome.org/" target="_blank" rel="noopener noreferrer" data-hint="Dont click this">wip</a></li>
-      <li><a href="https://www.merriam-webster.com/dictionary/procrastinate" target="_blank" rel="noopener noreferrer" data-hint="Later..">procrastinating..</a></li>
+
+  <main class="ui">
+    <div class="weather" aria-live="polite">
+      <span class="penguin" aria-hidden="true">🐧</span>
+      <div><small>ANTARCTICA · TODAY</small><b id="weather">LOADING...</b></div>
+    </div>
+    <h1 class="logo" id="hello" aria-label="Hello you">HELLO YOU</h1>
+    <nav aria-label="Choose something to open">
+      <ul class="menu" id="menu">
+        <li><a href="https://news.google.com" target="_blank" rel="noopener noreferrer"
+            data-hint="Trump Stahp..">News</a></li>
+        <li><a href="ko-blackjack.html" target="_blank" rel="noopener noreferrer" data-hint="Card counting trainer">KO
+            Blackjack</a></li>
+        <li><a href="go-stop.html" target="_blank" rel="noopener noreferrer" data-hint="Go Dont Stahp">Go-Stop</a></li>
+        <li><a href="https://www.chess.com" target="_blank" rel="noopener noreferrer" data-hint="Chess.com">Chess</a>
+        </li>
+        <li><a href="https://fmhy.net/video#stream-aggregators" target="_blank" rel="noopener noreferrer"
+            data-hint="Choose stars..">Movies</a></li>
+        <li><a href="https://fmhy.net/video#anime-streaming" target="_blank" rel="noopener noreferrer"
+            data-hint="Choose stars..">Anime</a></li>
+        <li><a href="https://fmhy.net/audio#audio-ripping" target="_blank" rel="noopener noreferrer"
+            data-hint="Choose stars..">Music</a></li>
+        <li><a href="https://beetv.foo/" target="_blank" rel="noopener noreferrer" data-hint="한국">Korea</a></li>
+        <li><a href="https://jellyfin.org/" target="_blank" rel="noopener noreferrer"
+            data-hint="Dont click this">wip</a></li>
+        <li><a href="https://www.navidrome.org/" target="_blank" rel="noopener noreferrer"
+            data-hint="Dont click this">wip</a></li>
+        <li><a href="https://www.merriam-webster.com/dictionary/procrastinate" target="_blank" rel="noopener noreferrer"
+            data-hint="Later..">procrastinating..</a></li>
+      </ul>
+    </nav>
+    <p class="hint" id="hint">&nbsp;</p>
+    <div class="pad" role="group" aria-label="On-screen controls">
+      <button type="button" class="pbtn pad-up" id="btnUp" aria-label="Up" tabindex="-1">&#9650;</button>
+      <button type="button" class="pbtn pad-left" id="btnLeft" aria-label="Move left" tabindex="-1">&#9664;</button>
+      <button type="button" class="pbtn go pad-center" id="btnGo" aria-label="Start" tabindex="-1">START</button>
+      <button type="button" class="pbtn pad-right" id="btnRight" aria-label="Move right" tabindex="-1">&#9654;</button>
+      <button type="button" class="pbtn pad-down" id="btnDown" aria-label="Down" tabindex="-1">&#9660;</button>
+    </div>
+    <ul class="players" aria-hidden="true">
+      <li class="on">PLAYER 1</li>
+      <li>PLAYER 2</li>
     </ul>
-  </nav>
-  <p class="hint" id="hint">&nbsp;</p>
-  <div class="pad" role="group" aria-label="On-screen controls">
-    <button type="button" class="pbtn" id="btnUp" aria-label="Up" tabindex="-1">&#9650;</button>
-    <button type="button" class="pbtn go" id="btnGo" aria-label="Start" tabindex="-1">START</button>
-    <button type="button" class="pbtn" id="btnDown" aria-label="Down" tabindex="-1">&#9660;</button>
-  </div>
-  <ul class="players" aria-hidden="true"><li class="on">PLAYER 1</li><li>PLAYER 2</li></ul>
-</main>
+  </main>
 
-<script src="menu.js"></script>
+  <script src="menu.js"></script>
 </body>
+
 </html>

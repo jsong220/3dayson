@@ -8,7 +8,6 @@
 <link rel="stylesheet" href="go-stop.css">
 </head>
 <body>
-<!-- shared vector art: each card just points at one of these, so the DOM stays tiny -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
   <symbol id="m1" viewBox="0 0 60 48"><path d="M30 3 44 19h-8l12 15H12l12-15h-8z" fill="#2f7d3a"/><rect x="27" y="34" width="6" height="11" fill="#7a4a1a"/><circle cx="49" cy="9" r="5" fill="#d33"/></symbol>
   <symbol id="m2" viewBox="0 0 60 48"><path d="M5 44Q24 30 55 10" stroke="#6b3f1d" stroke-width="3" fill="none"/><g fill="#e0457b"><circle cx="18" cy="32" r="6"/><circle cx="33" cy="23" r="6"/><circle cx="47" cy="14" r="5"/></g><g fill="#ffe9a8"><circle cx="18" cy="32" r="2"/><circle cx="33" cy="23" r="2"/><circle cx="47" cy="14" r="1.8"/></g></symbol>
@@ -29,19 +28,36 @@
 
 <div class="app">
   <header>
-    <a class="btn ghost" href="index.html">&#9664; MENU</a>
+    <a class="btn ghost icon" href="index.html" title="Menu">&#9664;</a>
+    <button class="btn ghost" id="btn2P" title="Play with a friend">2P</button>
     <div id="msg">Loading...</div>
-    <div class="hbtns"><button class="btn" id="btnResults" hidden>RESULTS</button><button class="btn go" id="btnNew">RESTART</button></div>
+    <div class="scores">
+      <button type="button" class="sc" id="scMe" title="View your captured groups"><em>YOU</em> <b id="pScore">0</b></button>
+      <span class="vs">·</span>
+      <button type="button" class="sc" id="scOpp" title="View opponent captured groups"><em id="oppLabel">CPU</em> <b id="cScore">0</b></button>
+    </div>
+    <div class="money" title="Session bankroll"><span>$</span><b id="bank">0</b></div>
+    <div class="hbtns">
+      <button class="btn" id="btnMyCards">MY CARDS</button>
+      <button class="btn go" id="btnNew">RESTART</button>
+    </div>
   </header>
-  <aside class="side" id="cpuSide"></aside>
   <main class="center">
     <div id="cpuHand" class="hand cpu"></div>
-    <section class="table"><div id="deck" class="deck"><span id="deckN">20</span></div><div id="tableCards"></div></section>
+    <div id="cpuCaptured" class="captured cpu-captured" data-empty="OPPONENT CAPTURED" aria-label="Opponent captured cards"></div>
+    <section class="table">
+      <div id="tableCards"></div>
+      <div class="deck-col">
+        <div id="deck" class="deck"><span id="deckN">20</span></div>
+      </div>
+    </section>
+    <div id="myCaptured" class="captured" data-empty="YOUR CAPTURED CARDS" aria-label="Your captured cards"></div>
     <div id="myHand" class="hand"></div>
   </main>
-  <aside class="side" id="mySide"></aside>
 </div>
 <div id="modal" class="modal" hidden><div class="box" id="modalBox"></div></div>
 <script src="go-stop.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
+<script src="go-stop-multiplayer.js" defer></script>
 </body>
 </html>
