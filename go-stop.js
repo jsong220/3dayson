@@ -290,7 +290,61 @@ function render() {
     oppLabel.textContent = label;
   }
   paintBank();
+  fitLayout();
 }
+
+/* ===================== RESPONSIVE FIT ===================== */
+/* Keeps every card visible on any screen: rows of cards (hands, captured) are
+   squeezed by overlapping, and the board cards are sized to the largest size
+   that still fits the space left over. */
+function fitRow(el, prefStep) {
+  if (!el) return;
+  el.style.removeProperty('--ov');
+  const card = el.querySelector('.card'); if (!card) return;
+  const cw = card.getBoundingClientRect().width; if (!cw) return;
+  const wraps = [...el.children].filter(k => !k.classList.contains('grp-sep'));
+  const seps = [...el.children].filter(k => k.classList.contains('grp-sep'));
+  const n = wraps.length, gaps = n - 1 - seps.length;   // overlapping neighbours
+  if (gaps < 1) return;
+  const cs = getComputedStyle(el);
+  const avail = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 2;
+  const sepW = seps.reduce((a, x) => { const c = getComputedStyle(x); return a + x.offsetWidth + parseFloat(c.marginLeft) + parseFloat(c.marginRight); }, 0);
+  const pref = prefStep(cw);
+  const need = n * cw + sepW - (cw - pref) * gaps;      // width at preferred spacing
+  let step = pref;
+  if (need > avail) step = cw - (n * cw + sepW - avail) / gaps;
+  step = Math.max(step, Math.min(pref, 6));            // never collapse fully
+  el.style.setProperty('--ov', (step - cw).toFixed(1) + 'px');
+}
+function fitTable() {
+  const table = document.querySelector('.table'), t = $('tableCards');
+  if (!table || !t) return;
+  const fits = () => t.scrollHeight <= t.clientHeight + 1 && t.scrollWidth <= t.clientWidth + 1;
+  let lo = 22, hi = 92, best = lo;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    table.style.setProperty('--tcw', mid + 'px');
+    if (fits()) { best = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  table.style.setProperty('--tcw', best + 'px');
+}
+let fitBusy = false;
+function fitLayout() {
+  if (fitBusy) return; fitBusy = true;
+  try {
+    fitRow($('myHand'), cw => cw + 6);
+    fitRow($('cpuHand'), cw => cw * .45);
+    fitRow($('myCaptured'), cw => cw * .65);
+    fitRow($('cpuCaptured'), cw => cw * .65);
+    fitTable();
+  } finally { fitBusy = false; }
+}
+let fitRaf = 0;
+const queueFit = () => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(fitLayout); };
+window.addEventListener('resize', queueFit);
+window.addEventListener('orientationchange', () => setTimeout(queueFit, 250));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', queueFit);
+if (window.ResizeObserver) new ResizeObserver(queueFit).observe(document.querySelector('.center'));
 
 $('myHand').onclick = e => {   const w = e.target.closest('.wrap'); if (!w) return;   humanPlay(+w.dataset.i); };$('tableCards').onclick = e => {
   const d = e.target.closest('[data-id]');
