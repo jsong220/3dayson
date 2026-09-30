@@ -1,3 +1,3 @@
-# ko-trainer-gem
+# 3dayson
 
 sleep sleep add read me some day z z 
