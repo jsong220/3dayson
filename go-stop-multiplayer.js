@@ -35,7 +35,7 @@
       c.on('open', function () {
         MP.conn = c; MP.active = true; ov.style.display = 'none';
         status('2P TABLE ' + code + ' - FRIEND JOINED');
-        if (window.gsTakeSnapshot) MP.send({t:'state', s:window.gsTakeSnapshot()});
+        if (window.newGame) window.newGame(); /* fresh deal so both seats start together */
       });
       c.on('data', onHostData); c.on('close', onClose); c.on('error', onClose);
     });
@@ -67,7 +67,9 @@
   ov.addEventListener('click', function (e) { var a = e.target.getAttribute && e.target.getAttribute('data-a'); if (a && ACT[a]) ACT[a](); });
 
   function onHostData(m) {
-    if (m.t === 'play' && typeof m.idx === 'number') window.gsPlayRemote && window.gsPlayRemote(m.idx);
+    if (m.t === 'play' && (m.idx === null || typeof m.idx === 'number')) window.gsPlayRemote && window.gsPlayRemote(m.idx);
+    else if (m.t === 'new') { window.newGame && window.newGame(); }
+    else if (m.t === 'cupPick') window.gsCupRemote && window.gsCupRemote(m.v);
     else if (m.t === 'sseop' && typeof m.month === 'number') window.gsSseopRemote && window.gsSseopRemote(m.month);
     else if (m.t === 'pick' && typeof m.id === 'string') window.gsResolvePick && window.gsResolvePick(m.id);
     else if (m.t === 'go') { window.goCall && window.goCall('c'); MP.send({t:'state', s:window.gsTakeSnapshot()}); }
@@ -76,6 +78,7 @@
   function onGuestData(m) {
     if (m.t === 'state' && window.gsApplySnapshot) window.gsApplySnapshot(m.s);
     else if (m.t === 'fly' && window.gsFly) window.gsFly(m.c, m.src, m.dst);
+    else if (m.t === 'cup' && window.gsAskCup) window.gsAskCup();
     else if (m.t === 'sfx' && window.gsPlaySfx) window.gsPlaySfx(m.n);
     else if (m.t === 'stealAnim' && window.gsStealAnim) window.gsStealAnim(m.w, m.c);
     else if (m.t === 'goStop') {
@@ -87,6 +90,7 @@
     var was = MP.active; MP.active = false; MP.conn = null;
     if (!was) return;
     status('FRIEND LEFT - SOLO MODE');
+    setTimeout(function () { if (MP.me === 'host' && window.cpuPlay && window.gsIsBusy && !window.gsIsBusy()) window.cpuPlay(); }, 600);
   }
 
   $('btn2P').addEventListener('click', function () {

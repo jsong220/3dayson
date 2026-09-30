@@ -23,6 +23,13 @@ const eff = c => c.special ? (c.countAs === 'yul' ? YU : PI) : c.type;
 const piVal = c => c.dbl ? 2 : 1;
 const val = c => eff(c) === KW ? (c.month === 12 ? 6 : 8) : eff(c) === YU ? (c.bird ? 6 : 4) : eff(c) === TT ? 3 : piVal(c);
 const CARD_INDEX = Object.fromEntries(makeDeck().map(c => [c.id, c]));
+if (window.GSArt) GSArt.install(DEFS);
+/* Fisher-Yates: unbiased (the old sort(() => Math.random() - .5) is not a fair shuffle) */
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
 
 /* ===================== SCORING ===================== */
 function parts(cards) {
@@ -40,7 +47,7 @@ function parts(cards) {
   return r;
 }
 function autoSpecial(cards) {
-  const sp = cards.find(c => c.special); if (!sp) return;
+  const sp = cards.find(c => c.special); if (!sp || sp.chosen) return;
   sp.countAs = 'pi'; const a = parts(cards).total;
   sp.countAs = 'yul'; const b = parts(cards).total;
   sp.countAs = b > a ? 'yul' : 'pi';
@@ -112,9 +119,10 @@ function paintBank() {
 }
 
 function newGame() {
+  if (window.MP && MP.active && MP.me === 'guest') { MP.send({ t: 'new' }); return; }
   let deck, bad;
   do {
-    deck = makeDeck().sort(() => Math.random() - .5);
+    deck = shuffle(makeDeck());
     const cnt = a => { const m = {}; a.forEach(c => m[c.month] = (m[c.month] || 0) + 1); return Object.values(m).some(n => n >= 4); };
     bad = cnt(deck.slice(0, 10)) || cnt(deck.slice(10, 20)) || cnt(deck.slice(20, 28));
   } while (bad);
@@ -203,9 +211,9 @@ function cardHTML(c, extra = '') {
   const e = eff(c); let tg, rib = '';
   if (e === KW) tg = `<i class="tg kw"><svg class="ic"><use href="#sun"/></svg><b>${c.month === 12 ? 'RAIN KWANG' : 'KWANG'}</b></i>`;
   else if (e === YU) tg = `<i class="tg yl">${c.bird ? '<svg class="ic"><use href="#bird"/></svg>' : ''}<b>${c.bird ? 'BIRD' : 'YUL'}</b></i>`;
-  else if (e === TT) { rib = `<i class="rib ${c.rib}"></i>`; tg = `<i class="tg ${c.rib}"><b>${RN[c.rib]}</b></i>`; }
+  else if (e === TT) { tg = `<i class="tg ${c.rib}"><b>${RN[c.rib]}</b></i>`; }
   else tg = `<i class="tg${c.dbl ? ' pi2' : ''}"><b>${c.dbl ? 'PI x2' : 'PI'}</b></i>`;
-  return `<div class="card t-${e} ${extra}" style="--c:${MC[c.month]}" title="${MN[c.month]}"><b class="mo">${c.month}</b><svg class="art"><use href="#m${c.month}"/></svg>${rib}${tg}</div>`;
+  return `<div class="card t-${e} ${extra}" title="${MN[c.month]}"><b class="mo">${c.month}</b><svg class="face"><use href="#card-${c.id}"/></svg>${tg}</div>`;
 }
 function sortGroup(t, cards) {
   const k = c => t === TT ? [SETS.findIndex(s => s[0] === c.rib) < 0 ? 9 : SETS.findIndex(s => s[0] === c.rib)] : t === YU ? [c.bird ? 0 : 1] : t === PI ? [c.dbl ? 0 : 1] : [c.month === 12 ? 1 : 0];
@@ -243,13 +251,18 @@ function render() {
       deckEl.style.cursor = 'pointer';
       deckEl.style.transform = 'translateY(-8px)';
     }
+  } else if (deckEl && state.over) {
+    deckEl.style.outline = '2px dashed #f5c542'; deckEl.style.outlineOffset = '2px'; deckEl.style.cursor = 'pointer'; deckEl.style.transform = '';
+    deckEl.title = 'Tap to see the cards left in the deck';
   } else if (deckEl) {
+    deckEl.title = '';
     deckEl.style.outline = '';
     deckEl.style.outlineOffset = '';
     deckEl.style.cursor = '';
     deckEl.style.transform = '';
   }
 
+  if (state.picking && !state.over) msgText = state.turn === me ? 'TWO MATCHES - TAP THE CARD YOU WANT' : 'FRIEND IS CHOOSING A MATCH...';
   $('msg').textContent = state.over
     ? `GAME OVER - YOU ${state[me].score} : ${state[opp].score} ${nameOf(opp)}`
     : msgText;
@@ -282,6 +295,7 @@ function render() {
 $('myHand').onclick = e => {   const w = e.target.closest('.wrap'); if (!w) return;   humanPlay(+w.dataset.i); };$('tableCards').onclick = e => {
   const d = e.target.closest('[data-id]');
   if (!d || !state.picking || !state.picking.includes(d.dataset.id)) return;
+  if (state.turn !== mySeat()) return;
   if (window.MP && MP.active && MP.me === 'guest') {
     MP.send({ t: 'pick', id: d.dataset.id });
     state.picking = null; render();
@@ -292,6 +306,7 @@ $('myHand').onclick = e => {   const w = e.target.closest('.wrap'); if (!w) retu
   broadcast();
 };
 $('deck').onclick = () => {
+  if (state && state.over) { openDeck(); return; }
   const me = mySeat();
   if (state && state.turn === me && !state.busy && !state.over && !state.pending && state[me].hand.length === 0) {
     humanPlay(null);
@@ -331,7 +346,7 @@ function pick(options) {
   });
 }
 window.gsResolvePick = function (cardId) {
-  if (!state || !state.picking || !state.picking.includes(cardId) || !state.pickRes) return;
+  if (!state || state.turn !== 'c' || !state.picking || !state.picking.includes(cardId) || !state.pickRes) return;
   const c = state.table.find(x => x.id === cardId);
   const r = state.pickRes;
   state.picking = null; state.pickRes = null; state.msg = '';
@@ -463,6 +478,7 @@ async function playSseop(who, sseop, before) {
   state.table = state.table.filter(c => c.id !== sseop.tableCard.id);
   state.fourDone.add(who + '-' + sseop.month);
   recalc();
+  await chooseCup(who);
   render(); broadcast();
   await sleep(400);
 
@@ -556,7 +572,8 @@ async function playTurn(who, idx, opts) {
   render(); broadcast();
   const same = m => state.table.filter(c => c.month === m);
   const take = cs => { cs.forEach(c => { state.table = state.table.filter(t => t.id !== c.id); }); cap.push(...cs); };
-  const choose = async opts => who === mySeat() ? await pick(opts) : opts.slice().sort((a, b) => val(b) - val(a))[0];
+  const remoteC = who === 'c' && window.MP && MP.active && MP.me === 'host';
+  const choose = async opts => (who === mySeat() || remoteC) ? await pick(opts) : opts.slice().sort((a, b) => val(b) - val(a))[0];
 
   if (H) {
     const k = same(H.month).length;
@@ -599,6 +616,7 @@ async function playTurn(who, idx, opts) {
   const beforePt = me.pt;
   me.cap.push(...cap);
   recalc();
+  await chooseCup(who);
   const afterPt = me.pt;
 
   const fourMonths = [];
@@ -681,6 +699,7 @@ function cpuPlay() {
 window.gsPlayRemote = function (idx) {
   if (!state || state.busy || state.over || state.pending) return;
   if (state.turn !== 'c') return;
+  if (idx === null ? state.c.hand.length > 0 : (!Number.isInteger(idx) || idx < 0 || idx >= state.c.hand.length)) return;
   playTurn('c', idx);
 };
 window.gsSseopRemote = function (month) {
@@ -697,14 +716,57 @@ window.gsTakeSnapshot = function () {
     p: {hand: state.p.hand.map(cid), cap: state.p.cap.map(cid), go: state.p.go, goScore: state.p.goScore, score: state.p.score, shakes: state.p.shakes || 0, shakeMonths: state.p.shakeMonths || []},
     c: {hand: state.c.hand.map(cid), cap: state.c.cap.map(cid), go: state.c.go, goScore: state.c.goScore, score: state.c.score, shakes: state.c.shakes || 0, shakeMonths: state.c.shakeMonths || []},
     table: state.table.map(cid), deck: state.deck.map(cid),
-    turn: state.turn, over: state.over, msg: state.msg,
+    turn: state.turn, over: state.over, busy: !!state.busy, msg: state.msg,
     picking: state.picking ? state.picking.slice() : null,
     fourDone: Array.from(state.fourDone),
+    cup: (c => c ? {as: c.countAs, chosen: !!c.chosen} : null)(findCup()),
     result: state.result ? {w: state.result.w, why: state.result.why, res: state.result.res} : null,
     bankDelta: state.bankDelta || 0
   };
 };
 function cid(c) { return c.id; }
+function findCup() {
+  if (!state) return null;
+  return [].concat(state.p.hand, state.p.cap, state.c.hand, state.c.cap, state.table, state.deck).find(c => c.special) || null;
+}
+/* ===== September cup: pick Double Pi or Yul once, then it is locked ===== */
+let cupRes = null;
+function cupScores(w) {
+  const cup = state[w].cap.find(c => c.special), keep = cup.countAs;
+  cup.countAs = 'pi'; const a = parts(state[w].cap).total;
+  cup.countAs = 'yul'; const b = parts(state[w].cap).total;
+  cup.countAs = keep; return [a, b];
+}
+function showCupModal(done) {
+  const [a, b] = cupScores(mySeat());
+  showModal(`<h2>SEPTEMBER CUP</h2>
+    <p>Count this card as a <b>Double Pi</b> or as a <b>Yul</b>?</p>
+    <p style="color:#8bd6a8">Your score would be <b>${a}</b> as Double Pi, or <b>${b}</b> as Yul.</p>
+    <p style="color:#ff8b8b">This choice is final - you can't change it later.</p>
+    <div class="row"><button class="btn go" id="cupPi">DOUBLE PI (${a})</button><button class="btn go" id="cupYul">YUL (${b})</button></div>`, false);
+  setTimeout(() => {
+    $('cupPi').onclick = () => { closeModal(); done('pi'); };
+    $('cupYul').onclick = () => { closeModal(); done('yul'); };
+  }, 0);
+}
+async function chooseCup(who) {
+  const cup = state[who].cap.find(c => c.special && !c.chosen);
+  if (!cup) return;
+  let pick;
+  if (who === mySeat()) pick = await new Promise(res => showCupModal(res));
+  else if (window.MP && MP.active && MP.me === 'host') {
+    state.msg = 'FRIEND IS CHOOSING HOW TO COUNT THE CUP...'; render(); broadcast();
+    MP.send({ t: 'cup' });
+    pick = await new Promise(res => { cupRes = res; });
+  } else {
+    const [a, b] = cupScores(who); pick = b > a ? 'yul' : 'pi';
+  }
+  cup.countAs = pick; cup.chosen = true;
+  state.msg = ''; recalc(); render(); broadcast();
+}
+window.gsCupRemote = v => { if (cupRes && (v === 'pi' || v === 'yul')) { const r = cupRes; cupRes = null; r(v); } };
+window.gsAskCup = () => showCupModal(v => MP.send({ t: 'cupPick', v }));
+let resultShown = false;
 function fromSnap(snap) {
   const all = {}; makeDeck().forEach(c => all[c.id] = c);
   const get = id => all[id];
@@ -712,16 +774,18 @@ function fromSnap(snap) {
     p: {hand: snap.p.hand.map(get), cap: snap.p.cap.map(get), go: snap.p.go, goScore: snap.p.goScore || 0, score: snap.p.score, shakes: snap.p.shakes || 0, shakeMonths: snap.p.shakeMonths || []},
     c: {hand: snap.c.hand.map(get), cap: snap.c.cap.map(get), go: snap.c.go, goScore: snap.c.goScore || 0, score: snap.c.score, shakes: snap.c.shakes || 0, shakeMonths: snap.c.shakeMonths || []},
     table: snap.table.map(get), deck: snap.deck.map(get),
-    turn: snap.turn, busy: false, over: snap.over, msg: snap.msg,
+    turn: snap.turn, busy: !!snap.busy, over: snap.over, msg: snap.msg,
     picking: snap.picking ? snap.picking.slice() : null,
     pickRes: null, pending: null, ppeok: new Set(),
     fourDone: new Set(snap.fourDone || []),
     result: snap.result || null,
     bankDelta: snap.bankDelta || 0
   };
+  const cupC = findCup(); if (cupC && snap.cup) { cupC.countAs = snap.cup.as; cupC.chosen = snap.cup.chosen; }
   recalc(); render();
-  if (snap.over && snap.result && window.MP && MP.active && MP.me === 'guest' && $('modal').hidden) {
-    showResult();
+  if (window.MP && MP.active && MP.me === 'guest') {
+    if (snap.over && snap.result) { if (!resultShown) { resultShown = true; showResult(); } }
+    else { if (resultShown) closeModal(); resultShown = false; }
   }
 }
 window.gsApplySnapshot = fromSnap;
@@ -809,12 +873,13 @@ function finish(w, why) {
 }
 function showResult() {
   const r = state.result; if (!r) return;
-  const title = r.w === 'p' ? 'YOU WIN!' : r.w === 'c' ? `${nameOf('c')} WINS` : 'DRAW';
+  const me = mySeat(), opp = oppSeat();
+  const title = r.w === me ? 'YOU WIN!' : r.w ? `${nameOf(r.w)} WINS` : 'DRAW';
   const lines = r.res ? `<div class="lines">${r.res.lines.map(l => `<div><span>${l[0]}</span><b>${l[1]}</b></div>`).join('')}<div class="total"><span>POINTS</span><b>${r.res.total}</b></div></div>` : '';
   const isGuest = window.MP && MP.active && MP.me === 'guest';
   const bd = state.bankDelta || 0;
   const bankLine = isGuest ? '' : `<p class="bankline">This round: <b class="${bd < 0 ? 'neg' : ''}">${bd >= 0 ? '+' : ''}${money(bd)}</b> · Bankroll: <b class="${bankroll < 0 ? 'neg' : ''}">${money(bankroll)}</b></p>`;
-  showModal(`<h2>${title}</h2><p>${r.why}</p><p>You ${state.p.score} : ${state.c.score} ${nameOf('c')}</p>${lines}${bankLine}
+  showModal(`<h2>${title}</h2><p>${r.why}</p><p>You ${state[me].score} : ${state[opp].score} ${nameOf(opp)}</p>${lines}${bankLine}
     <div class="row"><button class="btn" onclick="closeModal()">VIEW BOARD</button><button class="btn go" onclick="newGame()">PLAY AGAIN</button></div>`, true);
 }
 
@@ -847,7 +912,7 @@ function sections(t, cs) {
 function openGroup(w, t) {
   const cs = state[w].cap.filter(c => eff(c) === t); if (!cs.length) return;
   const key = {[KW]: 'K', [YU]: 'Y', [TT]: 'T', [PI]: 'P'}[t], pt = state[w].pt;
-  const cup = t === PI && cs.some(c => c.special) ? '<p>Month-9 cup is counted as Double Pi here (auto-picks whichever scores more).</p>' : (t === YU && cs.some(c => c.special) ? '<p>Month-9 cup is counted as a Yul here.</p>' : '');
+  const cup = t === PI && cs.some(c => c.special) ? '<p>Month-9 cup is counted as Double Pi here (your choice, locked in).</p>' : (t === YU && cs.some(c => c.special) ? '<p>Month-9 cup is counted as a Yul here (your choice, locked in).</p>' : '');
   showModal(`<h2>${nameOf(w) === 'YOU' ? 'YOUR' : nameOf(w)} ${t.toUpperCase()} - ${cs.length} cards</h2><div class="total">Group worth: ${pt.g[key]} pt${pt.g[key] === 1 ? '' : 's'}</div><p>${RULE[t]}</p>${cup}` +
     sections(t, sortGroup(t, cs)).map(s => `<div class="sec"><h4>${s.title} (${s.cards.length})${s.badge ? `<em class="${s.done ? 'done' : ''}">${s.badge}</em>` : ''}</h4><div class="cards">${s.cards.map(c => cardHTML(c, 'lg')).join('')}</div></div>`).join('') +
     '<div class="row"><button class="btn" onclick="closeModal()">CLOSE</button></div>', true);
@@ -867,7 +932,23 @@ function openPlayerCards(w) {
   showModal(`<h2>${title}</h2><div class="total">Total: ${pt.total} pt</div>${body}
     <div class="row"><button class="btn" onclick="closeModal()">CLOSE</button></div>`, true);
 }
+function openDeck() {
+  const d = state.deck.slice().sort((a, b) => a.month - b.month || val(b) - val(a));
+  showModal(`<h2>DECK - ${d.length} card${d.length === 1 ? '' : 's'} left</h2>` +
+    (d.length ? `<p>These cards were never flipped.</p><div class="sec"><div class="cards">${d.map(c => cardHTML(c, 'lg')).join('')}</div></div>` : '<p>The deck was played all the way through - nothing left.</p>') +
+    '<div class="row"><button class="btn" onclick="closeModal()">CLOSE</button></div>', true);
+}
 function openMyCards() { openPlayerCards(mySeat()); }
 
 newGame();
 
+
+/* ===================== LABELS TOGGLE ===================== */
+(function () {
+  const LS = 'goStop.labels';
+  const apply = on => { document.body.classList.toggle('labels', on); const b = $('btnLabels'); if (b) b.textContent = on ? 'LABELS: ON' : 'LABELS: OFF'; };
+  let on = false; try { on = localStorage.getItem(LS) === '1'; } catch (e) {}
+  apply(on);
+  const b = $('btnLabels');
+  if (b) b.onclick = () => { on = !on; try { localStorage.setItem(LS, on ? '1' : '0'); } catch (e) {} apply(on); };
+})();
