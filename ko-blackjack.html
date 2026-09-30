@@ -13,12 +13,12 @@
 
 <body class="min-h-screen flex flex-col">
   <header class="bg-black/40 p-4 shadow-md flex justify-between items-center border-b border-green-800">
-    <div class="flex items-center gap-3"><button type="button" id="btnHome" title="Play with a friend (2 player)"
-        aria-label="2 player invite"
-        class="text-xs font-bold leading-none bg-black/40 hover:bg-black/60 px-2 py-2 rounded text-green-300 no-underline border border-green-700">2P</button>
+    <div class="flex items-center gap-3">
       <h1 class="text-xl font-bold text-green-400 drop-shadow-md">KO Trainer Pro</h1>
     </div>
     <div class="flex gap-2 sm:gap-3 flex-wrap justify-end items-center">
+      <button type="button" id="btnHome" title="Play with a friend (2 player)" aria-label="2 player invite"
+        class="text-xs bg-emerald-800 hover:bg-emerald-700 px-2.5 py-1 rounded transition-colors text-white font-bold">2P</button>
       <button id="btnOpenBasicStrategy"
         class="text-xs bg-emerald-800 hover:bg-emerald-700 px-2.5 py-1 rounded transition-colors text-white font-bold">Basic
         Strategy</button>
@@ -38,25 +38,44 @@
       <button id="btnOpenSettings"
         class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition-colors">Settings</button>
       <button id="btnSound" aria-label="Toggle sound" title="Sound on/off"
-        class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition-colors flex items-center"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z" fill="currentColor"/><path class="snd-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/><path class="snd-wave" d="M18.5 5.5a9 9 0 0 1 0 13"/><line class="snd-slash" x1="3" y1="3" x2="21" y2="21"/></svg></button>
+        class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition-colors flex items-center"><svg
+          viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 5 6 9H3v6h3l5 4V5z" fill="currentColor" />
+          <path class="snd-wave" d="M15.5 8.5a5 5 0 0 1 0 7" />
+          <path class="snd-wave" d="M18.5 5.5a9 9 0 0 1 0 13" />
+          <line class="snd-slash" x1="3" y1="3" x2="21" y2="21" />
+        </svg></button>
     </div>
   </header>
-  
+
   <main class="flex-grow flex flex-col items-center relative overflow-hidden p-4">
     <div id="trackerWrap" class="absolute top-36 -translate-y-12 left-2 sm:left-4 w-16 sm:w-28 z-0">
-      <button id="btnShuffle" class="absolute bottom-full left-0 mb-1.5 w-full" title="Reshuffle Shoe">↻ Shuffle</button>
-      <div id="trackerBox" class="bg-black/70 p-2 sm:p-3 rounded-lg border border-gray-600 transition-opacity duration-300 w-full flex flex-col items-center shadow-lg">
-      <h3
-        class="font-bold text-gray-300 mb-1 border-b border-gray-500 pb-1 text-center text-[11px] sm:text-sm w-full tracking-widest">
-        KO</h3>
-      <div class="mt-1 text-center"><div class="ko-lbl">Current</div><span class="text-gray-200 text-sm sm:text-lg font-bold" id="currentCountDisplay">0</span></div>
-      <div class="my-1 text-center"><div class="ko-lbl">True</div><span class="text-white text-xl sm:text-3xl font-black drop-shadow-md" id="koCountDisplay">0</span></div>
-      <div
-        class="pt-1 sm:pt-2 border-t border-gray-700 text-[9px] sm:text-xs text-gray-400 text-center w-full leading-tight">
-        Cards<br><span id="cardsLeftDisplay" class="font-bold text-white text-[10px] sm:text-sm">0</span>
-        <div class="mt-1">Pen <span id="penDisplay" class="font-bold text-white">0%</span></div><div class="mt-1 h-1 w-full rounded bg-black/60 overflow-hidden"><div id="penBar" class="h-full" style="width:0%;background:linear-gradient(90deg,#2bb3a0,#5eead4);transition:width .4s"></div></div>
+      <button id="btnShuffle" class="absolute bottom-full left-0 mb-1.5 w-full" title="Reshuffle Shoe">↻
+        Shuffle</button>
+      <div id="trackerBox"
+        class="bg-black/70 p-2 sm:p-3 rounded-lg border border-gray-600 transition-opacity duration-300 w-full flex flex-col items-center shadow-lg">
+        <h3
+          class="font-bold text-gray-300 mb-1 border-b border-gray-500 pb-1 text-center text-[11px] sm:text-sm w-full tracking-widest">
+          KO</h3>
+        <div class="mt-1 text-center">
+          <div class="ko-lbl">Current</div><span class="text-gray-200 text-sm sm:text-lg font-bold"
+            id="currentCountDisplay">0</span>
+        </div>
+        <div class="my-1 text-center">
+          <div class="ko-lbl">True</div><span class="text-white text-xl sm:text-3xl font-black drop-shadow-md"
+            id="koCountDisplay">0</span>
+        </div>
+        <div
+          class="pt-1 sm:pt-2 border-t border-gray-700 text-[9px] sm:text-xs text-gray-400 text-center w-full leading-tight">
+          Cards<br><span id="cardsLeftDisplay" class="font-bold text-white text-[10px] sm:text-sm">0</span>
+          <div class="mt-1">Pen <span id="penDisplay" class="font-bold text-white">0%</span></div>
+          <div class="mt-1 h-1 w-full rounded bg-black/60 overflow-hidden">
+            <div id="penBar" class="h-full"
+              style="width:0%;background:linear-gradient(90deg,#2bb3a0,#5eead4);transition:width .4s"></div>
+          </div>
+        </div>
       </div>
-    </div>
     </div>
     <div class="w-full max-w-4xl flex-grow flex flex-col justify-between py-8 px-14 sm:px-28">
       <div class="flex flex-col items-center">
@@ -76,10 +95,14 @@
     </div>
 
     <!-- Floating Bet Controls centered on bottom felt -->
-    <div id="betControls" class="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-10 bg-black/60 backdrop-blur-sm p-4 sm:p-5 rounded-3xl border border-green-800/80 flex flex-col items-center gap-3 w-[92%] max-w-md shadow-2xl">
+    <div id="betControls"
+      class="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-10 bg-black/60 backdrop-blur-sm p-4 sm:p-5 rounded-3xl border border-green-800/80 flex flex-col items-center gap-3 w-[92%] max-w-md shadow-2xl">
       <div class="flex justify-between w-full px-2 items-center">
-        <div class="text-lg sm:text-xl font-bold text-green-400 bet-label">Bet: $<span id="currentBetDisplay">0</span></div>
-        <div id="potRow" class="hidden text-xs font-bold text-amber-300 bg-amber-900/40 border border-amber-700 rounded px-2 py-1">Push pot: $<span id="potDisplay">0</span></div>
+        <div class="text-lg sm:text-xl font-bold text-green-400 bet-label">Bet: $<span id="currentBetDisplay">0</span>
+        </div>
+        <div id="potRow"
+          class="hidden text-xs font-bold text-amber-300 bg-amber-900/40 border border-amber-700 rounded px-2 py-1">Push
+          pot: $<span id="potDisplay">0</span></div>
       </div>
       <div class="flex flex-wrap justify-center gap-3 sm:gap-4 mt-1">
         <button class="add-bet-btn casino-chip chip-blue" data-bet="10">$10</button>
@@ -88,33 +111,53 @@
         <button class="add-bet-btn casino-chip chip-green" data-bet="100">$100</button>
       </div>
       <div class="flex justify-center gap-3 w-full mt-2">
-        <button id="btnClearBet" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-5 rounded-full shadow-lg text-sm transition-colors">Clear</button>
-        <button id="btnDeal" class="flex-grow bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded-full shadow-lg text-sm disabled:opacity-50 transition-colors" disabled>Deal Hand</button>
+        <button id="btnClearBet"
+          class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-5 rounded-full shadow-lg text-sm transition-colors">Clear</button>
+        <button id="btnDeal"
+          class="flex-grow bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded-full shadow-lg text-sm disabled:opacity-50 transition-colors"
+          disabled>Deal Hand</button>
       </div>
     </div>
 
     <!-- Right rail: toast sits above the action buttons, right edges aligned -->
     <div id="rightRail" class="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-10 w-16 sm:w-24">
-      <div id="hintToast" class="absolute bottom-full right-0 mb-2 bg-red-900/95 border border-red-500 text-white font-semibold px-3 py-1.5 rounded-lg shadow-xl hidden pointer-events-none text-xs sm:text-sm w-[max-content] max-w-[70vw] text-center">
+      <div id="hintToast"
+        class="absolute bottom-full right-0 mb-2 bg-red-900/95 border border-red-500 text-white font-semibold px-3 py-1.5 rounded-lg shadow-xl hidden pointer-events-none text-xs sm:text-sm w-[max-content] max-w-[70vw] text-center">
         <span id="hintText"></span>
       </div>
-    <div id="actionControls" class="hidden flex flex-col gap-2 sm:gap-3 w-full">
-      <button id="btnHit" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[11px] sm:text-base w-full disabled:opacity-50">Hit</button>
-      <button id="btnStand" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[11px] sm:text-base w-full disabled:opacity-50">Stand</button>
-      <button id="btnDouble" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[10px] sm:text-base w-full disabled:opacity-50 tracking-tighter sm:tracking-normal">Double</button>
-      <button id="btnSplit" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[11px] sm:text-base w-full disabled:opacity-50">Split</button>
-      <button id="btnSurrender" class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[9px] sm:text-base w-full disabled:opacity-50 tracking-tighter sm:tracking-normal">Surrender</button>
-    </div>
+      <div id="actionControls" class="hidden flex flex-col gap-2 sm:gap-3 w-full">
+        <button id="btnHit"
+          class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[11px] sm:text-base w-full disabled:opacity-50">Hit</button>
+        <button id="btnStand"
+          class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[11px] sm:text-base w-full disabled:opacity-50">Stand</button>
+        <button id="btnDouble"
+          class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[10px] sm:text-base w-full disabled:opacity-50 tracking-tighter sm:tracking-normal">Double</button>
+        <button id="btnSplit"
+          class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[11px] sm:text-base w-full disabled:opacity-50">Split</button>
+        <button id="btnSurrender"
+          class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[9px] sm:text-base w-full disabled:opacity-50 tracking-tighter sm:tracking-normal">Surrender</button>
+      </div>
 
-    <!-- Post Game Controls on the right side -->
-    <div id="postGameControls" class="hidden flex flex-col justify-center w-full">
-      <button id="btnNext" class="bg-blue-600 hover:bg-blue-500 border border-blue-400 text-white font-bold py-4 rounded-lg shadow-xl transition-colors text-xs sm:text-base leading-tight w-full">Next<br>Hand</button>
-    </div>
+      <!-- Post Game Controls on the right side -->
+      <div id="postGameControls" class="hidden flex flex-col justify-center w-full">
+        <button id="btnNext"
+          class="bg-blue-600 hover:bg-blue-500 border border-blue-400 text-white font-bold py-4 rounded-lg shadow-xl transition-colors text-xs sm:text-base leading-tight w-full">Next<br>Hand</button>
+      </div>
     </div>
 
     <div id="shuffleOverlay" class="hidden absolute inset-0 z-40 pointer-events-none flex items-center justify-center">
-      <div class="flex flex-col items-center gap-3 px-6 py-5 rounded-2xl bg-black/60 backdrop-blur-sm border border-teal-300/40 shadow-2xl">
-        <div class="shuf-stack"><div class="shuf-card" style="--i:0"></div><div class="shuf-card" style="--i:1"></div><div class="shuf-card" style="--i:2"></div><div class="shuf-card" style="--i:3"></div><div class="shuf-card" style="--i:4"></div><div class="shuf-card" style="--i:5"></div><div class="shuf-card" style="--i:6"></div><div class="shuf-card" style="--i:7"></div></div>
+      <div
+        class="flex flex-col items-center gap-3 px-6 py-5 rounded-2xl bg-black/60 backdrop-blur-sm border border-teal-300/40 shadow-2xl">
+        <div class="shuf-stack">
+          <div class="shuf-card" style="--i:0"></div>
+          <div class="shuf-card" style="--i:1"></div>
+          <div class="shuf-card" style="--i:2"></div>
+          <div class="shuf-card" style="--i:3"></div>
+          <div class="shuf-card" style="--i:4"></div>
+          <div class="shuf-card" style="--i:5"></div>
+          <div class="shuf-card" style="--i:6"></div>
+          <div class="shuf-card" style="--i:7"></div>
+        </div>
         <div id="shuffleText" class="shuf-txt animate-pulse text-center">Shuffling shoe</div>
       </div>
     </div>
@@ -128,7 +171,7 @@
           id="btnInsNo" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded">No</button></div>
     </div>
   </div>
-  
+
   <div id="basicStrategyModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center p-3 sm:p-4">
     <div
       class="bg-gray-900 p-4 sm:p-6 rounded-lg border border-gray-700 w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl">
@@ -185,7 +228,7 @@
       </div>
     </div>
   </div>
-  
+
   <div id="settingsModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
     <div class="max-h-[90vh] overflow-y-auto bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-md mx-4">
       <h2 class="text-xl font-bold text-white mb-4 border-b border-gray-700 pb-2">Trainer Settings</h2>
@@ -217,7 +260,8 @@
           class="flex justify-between items-center cursor-pointer"><span>Use KO Deviations (KO Preferred)</span><input
             type="checkbox" id="tglDev" checked
             class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
-        <label class="flex justify-between items-center cursor-pointer"><span>Auto Next Hand</span><input type="checkbox" id="tglAuto" checked
+        <label class="flex justify-between items-center cursor-pointer"><span>Auto Next Hand</span><input
+            type="checkbox" id="tglAuto" checked
             class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
         <div class="border-t border-gray-700 my-2 pt-2 text-xs text-gray-500 uppercase">House Rules</div><label
           class="flex justify-between items-center cursor-pointer"><span>Allow Insurance</span><input type="checkbox"
@@ -233,8 +277,19 @@
             type="checkbox" id="tglH17" checked
             class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
         <div class="border-t border-gray-700 my-2 pt-2 text-xs text-gray-500 uppercase">Table Look</div>
-        <div class="flex justify-between items-center"><span>Felt Color</span><select id="selFelt" class="bg-gray-800 border border-gray-600 rounded px-2 py-1 outline-none"><option value="green" selected>Green</option><option value="navy">Navy</option><option value="burgundy">Burgundy</option><option value="charcoal">Charcoal</option></select></div>
-        <div class="flex justify-between items-center"><span>Card Back</span><select id="selBack" class="bg-gray-800 border border-gray-600 rounded px-2 py-1 outline-none"><option value="navy" selected>Navy</option><option value="burgundy">Burgundy</option><option value="black">Black</option></select></div>
+        <div class="flex justify-between items-center"><span>Felt Color</span><select id="selFelt"
+            class="bg-gray-800 border border-gray-600 rounded px-2 py-1 outline-none">
+            <option value="green" selected>Green</option>
+            <option value="navy">Navy</option>
+            <option value="burgundy">Burgundy</option>
+            <option value="charcoal">Charcoal</option>
+          </select></div>
+        <div class="flex justify-between items-center"><span>Card Back</span><select id="selBack"
+            class="bg-gray-800 border border-gray-600 rounded px-2 py-1 outline-none">
+            <option value="navy" selected>Navy</option>
+            <option value="burgundy">Burgundy</option>
+            <option value="black">Black</option>
+          </select></div>
         <div class="border-t border-gray-700 my-2 pt-2 text-xs text-gray-500 uppercase">Practice Mode</div>
         <div class="flex justify-between items-center"><span>Hand Focus</span><select id="selPracticeMode"
             class="bg-gray-800 border border-gray-600 rounded px-2 py-1 outline-none text-white text-sm">
@@ -247,14 +302,16 @@
         class="mt-6 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded">Save &amp; Close</button>
     </div>
   </div>
-  
+
   <div id="deviationsModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
     <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-lg mx-4 max-h-[85vh] flex flex-col">
       <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
         <h2 class="text-xl font-bold text-white">Knock-Out (KO) Strategy Deviations</h2><button id="btnCloseDeviations"
           class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
       </div>
-      <p class="text-xs text-gray-300 mb-4">When deviation training is enabled in settings, the app tests you on these KO Preferred plays. KO is unbalanced, so these are running counts measured against your shoe's pivot (+4) and key count, not Hi-Lo true counts. Everything not listed follows basic strategy.</p>
+      <p class="text-xs text-gray-300 mb-4">When deviation training is enabled in settings, the app tests you on these
+        KO Preferred plays. KO is unbalanced, so these are running counts measured against your shoe's pivot (+4) and
+        key count, not Hi-Lo true counts. Everything not listed follows basic strategy.</p>
       <div id="deviationsContainer" class="flex-grow overflow-y-auto pr-2 space-y-3"></div>
     </div>
   </div>
@@ -285,7 +342,9 @@
       <div id="accChart" class="bg-gray-800 rounded p-2 mb-4"></div>
       <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Saved Past Sessions</h3>
       <div id="leaderboardList" class="flex-grow overflow-y-auto pr-2 space-y-2"></div>
-      <button id="btnResetStats" class="mt-3 w-full text-sm bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-200 font-semibold py-2 rounded">Save session &amp; reset score</button>
+      <button id="btnResetStats"
+        class="mt-3 w-full text-sm bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-200 font-semibold py-2 rounded">Save
+        session &amp; reset score</button>
     </div>
   </div>
   <div id="rampModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
@@ -306,7 +365,7 @@
         guide, so adjust to your bankroll and table limits.</p>
     </div>
   </div>
-  
+
   <script src="ko-blackjack.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
   <script src="multiplayer.js" defer></script>
