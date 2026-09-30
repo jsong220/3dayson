@@ -68,6 +68,7 @@
 
   function onHostData(m) {
     if (m.t === 'play' && typeof m.idx === 'number') window.gsPlayRemote && window.gsPlayRemote(m.idx);
+    else if (m.t === 'sseop' && typeof m.month === 'number') window.gsSseopRemote && window.gsSseopRemote(m.month);
     else if (m.t === 'pick' && typeof m.id === 'string') window.gsResolvePick && window.gsResolvePick(m.id);
     else if (m.t === 'go') { window.goCall && window.goCall('c'); MP.send({t:'state', s:window.gsTakeSnapshot()}); }
     else if (m.t === 'stahp') { window.stahpCall && window.stahpCall('c'); }

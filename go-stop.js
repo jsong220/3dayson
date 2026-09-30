@@ -8,7 +8,7 @@ const SETS = [['hong', 'Hongdan (red, poetry)', '#e04040'], ['cheong', 'Cheongda
 const DEFS = [[1,'K'],[1,'T','hong'],[1,'P'],[1,'P'], [2,'Y',{b:1}],[2,'T','hong'],[2,'P'],[2,'P'], [3,'K'],[3,'T','hong'],[3,'P'],[3,'P'],
   [4,'Y',{b:1}],[4,'T','cho'],[4,'P'],[4,'P'], [5,'Y'],[5,'T','cho'],[5,'P'],[5,'P'], [6,'Y'],[6,'T','cheong'],[6,'P'],[6,'P'],
   [7,'Y'],[7,'T','cho'],[7,'P'],[7,'P'], [8,'K'],[8,'Y',{b:1}],[8,'P'],[8,'P'], [9,'Y',{sp:1}],[9,'T','cheong'],[9,'P'],[9,'P'],
-  [10,'Y'],[10,'T','cheong'],[10,'P'],[10,'P'], [11,'K'],[11,'P',{bonus:2}],[11,'P'],[11,'P'], [12,'K'],[12,'Y'],[12,'T','rain'],[12,'P',{bonus:4}]];
+  [10,'Y'],[10,'T','cheong'],[10,'P'],[10,'P'], [11,'K'],[11,'P',{d:1}],[11,'P'],[11,'P'], [12,'K'],[12,'Y'],[12,'T','rain'],[12,'P',{d:1}]];
 function makeDeck() {
   return DEFS.map(([m, t, x], i) => {
     const c = {id: 'c' + i, month: m, type: {K: KW, Y: YU, T: TT, P: PI}[t]};
@@ -16,12 +16,11 @@ function makeDeck() {
     if (x && x.b) c.bird = 1;
     if (x && x.d) c.dbl = 1;
     if (x && x.sp) { c.special = 1; c.dbl = 1; c.countAs = 'pi'; }
-    if (x && x.bonus) { c.bonus = x.bonus; }
     return c;
   });
 }
 const eff = c => c.special ? (c.countAs === 'yul' ? YU : PI) : c.type;
-const piVal = c => c.bonus ? c.bonus : (c.dbl ? 2 : 1);
+const piVal = c => c.dbl ? 2 : 1;
 const val = c => eff(c) === KW ? (c.month === 12 ? 6 : 8) : eff(c) === YU ? (c.bird ? 6 : 4) : eff(c) === TT ? 3 : piVal(c);
 const CARD_INDEX = Object.fromEntries(makeDeck().map(c => [c.id, c]));
 
@@ -79,9 +78,10 @@ function sfx(name, skipRelay) {
     case 'win': [660, 880, 1320].forEach((f,i)=>tone(a, t+i*.1, f, .35, .16)); break;
     case 'lose': tone(a, t, 240, .4, .18, 'triangle', 120); break;
     case 'bank': tone(a, t, 1400, .05, .12, 'triangle', 800); break;
-    case 'bonus': [1046, 1320, 1568].forEach((f,i)=>tone(a, t+i*.08, f, .22, .16, 'triangle')); break;
     case 'steal': tone(a, t, 880, .12, .14, 'triangle', 1320); tone(a, t + .12, 1320, .2, .13); break;
     case 'four': [660, 880, 1100, 1320, 1760].forEach((f,i)=>tone(a, t+i*.07, f, .22, .14, 'triangle')); break;
+    case 'sseop': [523, 659, 784, 1046, 1320].forEach((f,i)=>tone(a, t+i*.06, f, .24, .15, 'triangle')); break;
+    case 'shake': [523, 523, 784, 784, 1046].forEach((f,i)=>tone(a, t+i*.09, f, .18, .16, 'square')); break;
   }
 }
 window.gsPlaySfx = function (name) { sfx(name, true); };
@@ -119,10 +119,83 @@ function newGame() {
     bad = cnt(deck.slice(0, 10)) || cnt(deck.slice(10, 20)) || cnt(deck.slice(20, 28));
   } while (bad);
   const sort = a => a.sort((x, y) => x.month - y.month || val(y) - val(x));
-  state = {p: {hand: sort(deck.slice(0, 10)), cap: [], go: 0, score: 0}, c: {hand: sort(deck.slice(10, 20)), cap: [], go: 0, score: 0},
-    table: deck.slice(20, 28), deck: deck.slice(28), turn: 'p', busy: false, over: false, msg: 'GAME STARTED - YOUR TURN', picking: null, pickRes: null,
-    pending: null, ppeok: new Set(), fourDone: new Set(), result: null, bankDelta: 0};
+  const first = Math.random() < 0.5 ? 'p' : 'c';
+  state = {
+    p: {hand: sort(deck.slice(0, 10)), cap: [], go: 0, goScore: 0, score: 0, shakes: 0, shakeMonths: []},
+    c: {hand: sort(deck.slice(10, 20)), cap: [], go: 0, goScore: 0, score: 0, shakes: 0, shakeMonths: []},
+    table: deck.slice(20, 28), deck: deck.slice(28),
+    turn: first, busy: true, over: false,
+    msg: `${nameOf(first)} GOES FIRST`,
+    picking: null, pickRes: null, pending: null, ppeok: new Set(), fourDone: new Set(),
+    result: null, bankDelta: 0
+  };
   recalc(); closeModal(); paintBank(); render(); broadcast();
+  setTimeout(() => runShakePhase(() => beginPlay()), 500);
+}
+
+/* ===================== 흔들기 (SHAKE) ===================== */
+function findShakes(who) {
+  if (!state) return [];
+  const byMonth = {};
+  state[who].hand.forEach(c => { (byMonth[c.month] = byMonth[c.month] || []).push(c); });
+  return Object.keys(byMonth).filter(m => byMonth[m].length === 3).map(m => +m);
+}
+function runShakePhase(done) {
+  const pMonths = findShakes('p');
+  const cMonths = findShakes('c');
+  if (cMonths.length) {
+    state.c.shakes = cMonths.length;
+    state.c.shakeMonths = cMonths;
+    sfx('shake');
+    state.msg = `${nameOf('c')} SHAKES x${cMonths.length}! (${cMonths.map(m => MN[m]).join(', ')})`;
+    render(); broadcast();
+  }
+  const shouldPromptHostP = (pMonths.length > 0) && (!window.MP || !MP.active || MP.me === 'host');
+  if (shouldPromptHostP) {
+    showShakeModal(pMonths, (accepted) => {
+      if (accepted) {
+        state.p.shakes = pMonths.length;
+        state.p.shakeMonths = pMonths;
+        sfx('shake');
+        state.msg = `YOU SHAKE x${pMonths.length}! (${pMonths.map(m => MN[m]).join(', ')})`;
+      }
+      render(); broadcast();
+      done();
+    });
+    return;
+  }
+  done();
+}
+function showShakeModal(months, callback) {
+  const monthNames = months.map(m => MN[m]).join(' · ');
+  const mult = Math.pow(2, months.length);
+  showModal(
+    `<h2>흔들기 (SHAKE)?</h2>
+     <p>You were dealt <b>3 of ${monthNames}</b>.</p>
+     <p>Shake to multiply your winnings by <b>×${mult}</b> if you win this round.</p>
+     <p style="color:#8bd6a8">You still play those cards however and whenever you want.</p>
+     <div class="row">
+       <button class="btn go" id="shakeYes">SHAKE ×${mult}</button>
+       <button class="btn" id="shakeNo">SKIP</button>
+     </div>`, false);
+  setTimeout(() => {
+    const yes = $('shakeYes'), no =$('shakeNo');
+    if (yes) yes.onclick = () => { closeModal(); callback(true); };
+    if (no) no.onclick = () => { closeModal(); callback(false); };
+  }, 0);
+}
+
+function beginPlay() {
+  state.busy = false;
+  state.msg = state.msg || (state.turn === mySeat() ? 'YOUR TURN' : '');
+  render(); broadcast();
+  if (state.turn === 'c') {
+    if (window.MP && MP.active) {
+      state.msg = 'FRIEND IS PLAYING...'; render(); broadcast();
+    } else {
+      setTimeout(cpuPlay, 750);
+    }
+  }
 }
 
 /* ===================== RENDER ===================== */
@@ -131,12 +204,11 @@ function cardHTML(c, extra = '') {
   if (e === KW) tg = `<i class="tg kw"><svg class="ic"><use href="#sun"/></svg><b>${c.month === 12 ? 'RAIN KWANG' : 'KWANG'}</b></i>`;
   else if (e === YU) tg = `<i class="tg yl">${c.bird ? '<svg class="ic"><use href="#bird"/></svg>' : ''}<b>${c.bird ? 'BIRD' : 'YUL'}</b></i>`;
   else if (e === TT) { rib = `<i class="rib ${c.rib}"></i>`; tg = `<i class="tg ${c.rib}"><b>${RN[c.rib]}</b></i>`; }
-  else if (c.bonus) tg = `<i class="tg pi-bonus"><b>BONUS x${c.bonus}</b></i>`;
   else tg = `<i class="tg${c.dbl ? ' pi2' : ''}"><b>${c.dbl ? 'PI x2' : 'PI'}</b></i>`;
-  return `<div class="card t-${e}${c.bonus ? ' bonus' : ''} ${extra}" style="--c:${MC[c.month]}" title="${MN[c.month]}"><b class="mo">${c.month}</b><svg class="art"><use href="#m${c.month}"/></svg>${rib}${tg}</div>`;
+  return `<div class="card t-${e} ${extra}" style="--c:${MC[c.month]}" title="${MN[c.month]}"><b class="mo">${c.month}</b><svg class="art"><use href="#m${c.month}"/></svg>${rib}${tg}</div>`;
 }
 function sortGroup(t, cards) {
-  const k = c => t === TT ? [SETS.findIndex(s => s[0] === c.rib) < 0 ? 9 : SETS.findIndex(s => s[0] === c.rib)] : t === YU ? [c.bird ? 0 : 1] : t === PI ? [c.bonus ? -1 : (c.dbl ? 0 : 1)] : [c.month === 12 ? 1 : 0];
+  const k = c => t === TT ? [SETS.findIndex(s => s[0] === c.rib) < 0 ? 9 : SETS.findIndex(s => s[0] === c.rib)] : t === YU ? [c.bird ? 0 : 1] : t === PI ? [c.dbl ? 0 : 1] : [c.month === 12 ? 1 : 0];
   return cards.slice().sort((a, b) => k(a)[0] - k(b)[0] || a.month - b.month);
 }
 function capturedHTML(w) {
@@ -157,12 +229,30 @@ function capturedHTML(w) {
 function render() {
   $('deckN').textContent = state.deck.length;
   const me = mySeat(), opp = oppSeat();
+  const can = state.turn === me && !state.busy && !state.over && !state.pending;
+  
+  let msgText = state.msg || (state.turn === me ? 'YOUR TURN - PICK A CARD' 
+      : (window.MP && MP.active ? 'FRIEND IS PLAYING...' : 'CPU IS PLAYING...'));
+
+  const deckEl = $('deck');
+  if (can && state[me].hand.length === 0 && state.deck.length > 0) {
+    if (!state.msg) msgText = 'YOUR HAND IS EMPTY - TAP THE DECK TO FLIP';
+    if (deckEl) {
+      deckEl.style.outline = '3px solid #f5c542';
+      deckEl.style.outlineOffset = '2px';
+      deckEl.style.cursor = 'pointer';
+      deckEl.style.transform = 'translateY(-8px)';
+    }
+  } else if (deckEl) {
+    deckEl.style.outline = '';
+    deckEl.style.outlineOffset = '';
+    deckEl.style.cursor = '';
+    deckEl.style.transform = '';
+  }
+
   $('msg').textContent = state.over
     ? `GAME OVER - YOU ${state[me].score} : ${state[opp].score} ${nameOf(opp)}`
-    : (state.msg || (state.turn === me ? 'YOUR TURN - PICK A CARD'
-        : (window.MP && MP.active ? 'FRIEND IS PLAYING...' : 'CPU IS PLAYING...')));
-
-  const can = state.turn === me && !state.busy && !state.over && !state.pending;
+    : msgText;
 
   $('myHand').innerHTML = state[me].hand.map((c, i) =>
     `<div class="wrap" id="mh-${c.id}" data-i="${i}">${cardHTML(c, can ? 'can' : '')}${can && state.table.some(t => t.month === c.month) ? '<span class="hit">&#10003;</span>' : ''}</div>`
@@ -178,23 +268,18 @@ function render() {
   }).join('');
 
   $('myCaptured').innerHTML = capturedHTML(me);
-  $('cpuCaptured').innerHTML = capturedHTML(opp);
-  $('pScore').textContent = state[me].score;
+  $('cpuCaptured').innerHTML = capturedHTML(opp);$('pScore').textContent = state[me].score;
   $('cScore').textContent = state[opp].score;
   const oppLabel = $('oppLabel');
-  if (oppLabel) oppLabel.textContent = nameOf(opp);
+  if (oppLabel) {
+    let label = nameOf(opp);
+    if (state[opp].shakes) label += ' 🀄×' + state[opp].shakes;
+    oppLabel.textContent = label;
+  }
   paintBank();
 }
-$('myHand').onclick = e => {
-  const w = e.target.closest('.wrap'); if (!w) return;
-  const i = +w.dataset.i;
-  if (window.MP && MP.active && MP.me === 'guest' && state.turn === 'c' && !state.busy && !state.over && !state.pending) {
-    MP.send({ t: 'play', idx: i });
-    return;
-  }
-  humanPlay(i);
-};
-$('tableCards').onclick = e => {
+
+$('myHand').onclick = e => {   const w = e.target.closest('.wrap'); if (!w) return;   humanPlay(+w.dataset.i); };$('tableCards').onclick = e => {
   const d = e.target.closest('[data-id]');
   if (!d || !state.picking || !state.picking.includes(d.dataset.id)) return;
   if (window.MP && MP.active && MP.me === 'guest') {
@@ -206,6 +291,12 @@ $('tableCards').onclick = e => {
   state.picking = null; state.pickRes = null; state.msg = ''; render(); r(c);
   broadcast();
 };
+$('deck').onclick = () => {
+  const me = mySeat();
+  if (state && state.turn === me && !state.busy && !state.over && !state.pending && state[me].hand.length === 0) {
+    humanPlay(null);
+  }
+};
 $('myCaptured').onclick = e => {
   const w = e.target.closest('.wrap'); if (!w) return;
   openGroup(mySeat(), w.dataset.t);
@@ -215,8 +306,7 @@ $('cpuCaptured').onclick = e => {
   openGroup(oppSeat(), w.dataset.t);
 };
 $('scMe').onclick = () => openPlayerCards(mySeat());
-$('scOpp').onclick = () => openPlayerCards(oppSeat());
-$('btnNew').onclick = newGame;
+$('scOpp').onclick = () => openPlayerCards(oppSeat());$('btnNew').onclick = newGame;
 $('btnMyCards').onclick = () => openMyCards();
 
 /* ===================== ANIMATION ===================== */
@@ -252,8 +342,8 @@ window.gsResolvePick = function (cardId) {
 /* ===================== STEAL ANIMATION ===================== */
 async function playStealAnim(who, card) {
   const isLocal = who === mySeat();
-  const srcEl = isLocal ? $('cpuCaptured') : $('myCaptured');
-  const dstEl = isLocal ? $('myCaptured') : $('cpuCaptured');
+  const srcEl = isLocal ? $('cpuCaptured') :$('myCaptured');
+  const dstEl = isLocal ? $('myCaptured') :$('cpuCaptured');
   if (!srcEl || !dstEl) return;
   srcEl.classList.remove('pi-steal-src'); void srcEl.offsetWidth; srcEl.classList.add('pi-steal-src');
   setTimeout(() => srcEl.classList.remove('pi-steal-src'), 900);
@@ -285,9 +375,7 @@ window.gsStealAnim = function (who, cardId) {
 
 async function stealWithAnim(who) {
   const me = state[who], foe = state[other(who)];
-  /* Prefer a plain single pi, then any non-bonus pi, then any pi */
-  let idx = foe.cap.findIndex(c => eff(c) === PI && !c.bonus && !c.dbl);
-  if (idx < 0) idx = foe.cap.findIndex(c => eff(c) === PI && !c.bonus);
+  let idx = foe.cap.findIndex(c => eff(c) === PI && !c.dbl);
   if (idx < 0) idx = foe.cap.findIndex(c => eff(c) === PI);
   if (idx < 0) return null;
 
@@ -306,10 +394,133 @@ async function stealWithAnim(who) {
   return card;
 }
 
+/* ===================== 폭탄 (BOMB) ===================== */
+function findSseop(who) {
+  if (!state) return null;
+  const me = state[who];
+  const byMonth = {};
+  me.hand.forEach(c => { (byMonth[c.month] = byMonth[c.month] || []).push(c); });
+  for (const m in byMonth) {
+    if (byMonth[m].length === 3) {
+      const t = state.table.find(tc => tc.month === +m);
+      if (t) return { month: +m, handCards: byMonth[m].slice(0, 3), tableCard: t };
+    }
+  }
+  return null;
+}
+function sseopForCard(who, card) {
+  const s = findSseop(who);
+  if (!s) return null;
+  if (s.month !== card.month) return null;
+  if (!s.handCards.some(c => c.id === card.id)) return null;
+  return s;
+}
+window.gsHasSseop = function (who) { return !!findSseop(who); };
+
+function showSseopModal(month, callback) {
+  showModal(
+    `<h2>폭탄 (BOMB)?</h2>
+     <p>You can play all 3 <b>${MN[month]}</b> cards at once to complete the set and steal 1 pi from your opponent.</p>
+     <p style="color:#8bd6a8">Or play just 1 card normally and keep the other 2 in hand.</p>
+     <div class="row">
+       <button class="btn go" id="sseopYes">폭탄 (PLAY 3)</button>
+       <button class="btn" id="sseopNo">PLAY 1</button>
+     </div>`, false);
+  setTimeout(() => {
+    const y = $('sseopYes'), n =$('sseopNo');
+    if (y) y.onclick = () => { closeModal(); callback(true); };
+    if (n) n.onclick = () => { closeModal(); callback(false); };
+  }, 0);
+}
+
+async function playSseop(who, sseop, before) {
+  const me = state[who];
+  const tags = [`폭탄! 4-of-M${sseop.month}`];
+
+  const srcRects = sseop.handCards.map(c => rect((who === mySeat() ? 'mh-' : 'oh-') + c.id));
+  const tableRect = rect('tb-' + sseop.tableCard.id);
+
+  sseop.handCards.forEach(c => {
+    const i = me.hand.findIndex(h => h.id === c.id);
+    if (i >= 0) me.hand.splice(i, 1);
+  });
+  render(); broadcast();
+
+  sfx('sseop');
+  if (window.MP && MP.active && MP.me === 'host') {
+    sseop.handCards.forEach(c => {
+      const idx = sseop.handCards.indexOf(c);
+      const srcRect = srcRects[idx];
+      if (srcRect) MP.send({ t: 'fly', c: c.id, dst: 'tb-' + sseop.tableCard.id, src: { left: srcRect.left, top: srcRect.top, width: srcRect.width, height: srcRect.height } });
+    });
+  }
+  for (let i = 0; i < sseop.handCards.length; i++) {
+    if (srcRects[i] && tableRect) await fly(sseop.handCards[i], srcRects[i], tableRect);
+    sfx('deal');
+  }
+
+  me.cap.push(...sseop.handCards, sseop.tableCard);
+  state.table = state.table.filter(c => c.id !== sseop.tableCard.id);
+  state.fourDone.add(who + '-' + sseop.month);
+  recalc();
+  render(); broadcast();
+  await sleep(400);
+
+  sfx('four');
+  const stolen = await stealWithAnim(who);
+  if (stolen) tags.push('+1 PI');
+
+  state.msg = `${nameOf(who)}: ${tags.join(' · ')}`;
+  render(); broadcast();
+  await sleep(700);
+
+  if (!state.p.hand.length && !state.c.hand.length && !state.deck.length) {
+    if (me.score >= 7 && me.score > before) finish(who, `${nameOf(who)} REACHED ${me.score} ON THE LAST TURN.`);
+    else exhaust();
+    return;
+  }
+  if (me.score >= 7 && me.score > before) { offerGoStop(who); return; }
+  pass(who);
+}
+
 /* ===================== TURN ===================== */
 function humanPlay(i) {
-  if (state.turn === mySeat() && !state.busy && !state.over && !state.pending) playTurn(mySeat(), i);
+  if (state.turn !== mySeat() || state.busy || state.over || state.pending) return;
+  const me = mySeat();
+
+  if (i === null) {
+    if (window.MP && MP.active && MP.me === 'guest') {
+      MP.send({ t: 'play', idx: null });
+      return;
+    }
+    playTurn(me, null);
+    return;
+  }
+
+  const clicked = state[me].hand[i];
+  if (!clicked) return;
+
+  const sseop = sseopForCard(me, clicked);
+  if (sseop) {
+    showSseopModal(clicked.month, (accepted) => {
+      if (window.MP && MP.active && MP.me === 'guest') {
+        if (accepted) MP.send({ t: 'sseop', month: clicked.month });
+        else MP.send({ t: 'play', idx: i });
+        return;
+      }
+      if (accepted) playTurn(me, i, { forceSseop: true });
+      else playTurn(me, i);
+    });
+    return;
+  }
+
+  if (window.MP && MP.active && MP.me === 'guest') {
+    MP.send({ t: 'play', idx: i });
+    return;
+  }
+  playTurn(me, i);
 }
+
 function sfxForTags(tags) {
   const flat = tags.join(' ');
   if (/TTADAK/.test(flat)) sfx('ttadak');
@@ -319,32 +530,42 @@ function sfxForTags(tags) {
   if (/SWEEP/.test(flat)) sfx('sweep');
 }
 
-async function playTurn(who, idx) {
+async function playTurn(who, idx, opts) {
   if (state.busy || state.over) return;
+  const me = state[who], before = me.score;
+
+  if (opts && opts.forceSseop) {
+    const sseop = findSseop(who);
+    if (sseop) {
+      state.busy = true; state.msg = '';
+      await playSseop(who, sseop, before);
+      return;
+    }
+  }
+
   state.busy = true; state.msg = '';
-  const me = state[who], before = me.score, tags = [], cap = [];
+  const tags = [], cap = [];
   let steals = 0;
-  const H = me.hand.splice(idx, 1)[0];
-  const from = rect((who === mySeat() ? 'mh-' : 'oh-') + H.id);
+
+  let H = null, from = null, chosen = null;
+  if (idx !== null && idx !== undefined && me.hand.length > 0) {
+    H = me.hand.splice(idx, 1)[0];
+    from = rect((who === mySeat() ? 'mh-' : 'oh-') + H.id);
+  }
+
   render(); broadcast();
   const same = m => state.table.filter(c => c.month === m);
   const take = cs => { cs.forEach(c => { state.table = state.table.filter(t => t.id !== c.id); }); cap.push(...cs); };
   const choose = async opts => who === mySeat() ? await pick(opts) : opts.slice().sort((a, b) => val(b) - val(a))[0];
 
-  /* 1. hand card -> table */
-  const k = same(H.month).length;
-  state.table.push(H); render(); broadcast();
-  netFly(from, 'tb-' + H.id, H);
-  await land(H, from); sfx('deal');
-  if (H.bonus) {
-    sfx('bonus');
-    tags.push(`BONUS x${H.bonus}`);
-    const stolen = await stealWithAnim(who);
-    if (stolen) tags.push('+1 PI (BONUS)');
+  if (H) {
+    const k = same(H.month).length;
+    state.table.push(H); render(); broadcast();
+    netFly(from, 'tb-' + H.id, H);
+    await land(H, from); sfx('deal');
+    chosen = k === 2 ? await choose(same(H.month).filter(c => c.id !== H.id)) : null;
   }
-  const chosen = k === 2 ? await choose(same(H.month).filter(c => c.id !== H.id)) : null;
 
-  /* 2. flip stock card */
   await sleep(220);
   const S = state.deck.pop();
   if (S) {
@@ -353,30 +574,26 @@ async function playTurn(who, idx) {
     state.table.push(S); render(); broadcast();
     netFly(df, 'tb-' + S.id, S);
     await land(S, df); sfx('flip');
-    if (S.bonus) {
-      sfx('bonus');
-      tags.push(`BONUS FLIP x${S.bonus}`);
-      const stolen = await stealWithAnim(who);
-      if (stolen) tags.push('+1 PI (BONUS)');
-    }
   }
 
-  /* 3. resolve captures */
   const settle = async (X, pre) => {
+    if (!X) return;
     const g = same(X.month), n = g.length - 1;
     if (n === 1) { take(g); render(); broadcast(); }
     else if (n === 2) { take([X, pre || await choose(g.filter(c => c.id !== X.id))]); render(); broadcast(); }
     else if (n === 3) { take(g); if (state.ppeok.delete(X.month)) { tags.push('PPEOK CLEARED!'); } render(); broadcast(); }
   };
-  if (S && S.month === H.month) {
+
+  if (H && S && S.month === H.month) {
     const g = same(H.month);
     if (g.length === 2) { take(g); steals++; tags.push('JJOK!'); }
     else if (g.length === 3) { state.ppeok.add(H.month); tags.push('PPEOK!'); }
     else if (g.length === 4) { take(g); tags.push('TTADAK!'); }
   } else {
-    await settle(H, chosen);
+    if (H) await settle(H, chosen);
     if (S) await settle(S);
   }
+  
   if (cap.length && !state.table.length && (state.p.hand.length || state.c.hand.length || state.deck.length)) { steals++; tags.push('SWEEP!'); }
 
   const beforePt = me.pt;
@@ -384,8 +601,6 @@ async function playTurn(who, idx) {
   recalc();
   const afterPt = me.pt;
 
-  /* 4-of-a-kind check: any month with all 4 cards now in your captures gives +1 pi.
-     This covers ppeok-clear, ttadak, and the "played 3 from hand + 1 from field" case. */
   const fourMonths = [];
   for (let m = 1; m <= 12; m++) {
     const key = who + '-' + m;
@@ -396,7 +611,6 @@ async function playTurn(who, idx) {
     }
   }
 
-  /* group-complete SFX */
   if (who === mySeat()) {
     if (beforePt.birds < 3 && afterPt.birds === 3) sfx('godori');
     ['hong','cheong','cho'].forEach(k2 => { if (beforePt.setN[k2] < 3 && afterPt.setN[k2] === 3) sfx('set'); });
@@ -404,7 +618,6 @@ async function playTurn(who, idx) {
   }
   sfxForTags(tags);
 
-  /* award steals (JJOK/SWEEP base + 4-of-a-kind) */
   for (let i = 0; i < steals; i++) {
     const stolen = await stealWithAnim(who);
     if (stolen) tags.push('+1 PI');
@@ -412,34 +625,51 @@ async function playTurn(who, idx) {
   if (fourMonths.length) sfx('four');
   for (const m of fourMonths) {
     const stolen = await stealWithAnim(who);
-    if (stolen) tags.push(`+1 PI (4-M${m})`);
+    if (stolen) tags.push(`+1 PI (4-of-M${m})`);
   }
 
   state.msg = tags.length ? `${nameOf(who)}: ${tags.join(' · ')}` : '';
   render(); broadcast();
-  const flashEl = who === mySeat() ? $('myCaptured') : $('cpuCaptured');
+  const flashEl = who === mySeat() ? $('myCaptured') :$('cpuCaptured');
   if (cap.length && flashEl) { flashEl.classList.add('flash'); setTimeout(() => flashEl.classList.remove('flash'), 950); }
   await sleep(cap.length ? 600 : 250);
 
-  if (!state.p.hand.length && !state.c.hand.length) {
+  if (!state.p.hand.length && !state.c.hand.length && !state.deck.length) {
     if (me.score >= 7 && me.score > before) finish(who, `${nameOf(who)} REACHED ${me.score} ON THE LAST TURN.`);
     else exhaust();
     return;
   }
-  if (me.score >= 7 && me.score > before) { offerGoStop(who); return; }
+  const goFloor = me.go > 0 ? me.goScore : 0;
+  if (me.score >= 7 && me.score > goFloor) { offerGoStop(who); return; }
   pass(who);
 }
+
 function pass(w) {
   state.turn = other(w); state.busy = false; state.pending = null; render(); broadcast();
   if (state.turn === 'c') {
     if (window.MP && MP.active) {
       state.msg = 'FRIEND IS PLAYING...'; render(); broadcast();
-    } else setTimeout(cpuPlay, 750);
+    } else {
+      setTimeout(() => {
+        if (!state || state.over || state.busy || state.turn !== 'c') return;
+        cpuPlay();
+      }, 750);
+    }
   }
 }
+
 function cpuPlay() {
   if (state.over || state.turn !== 'c') return;
   if (window.MP && MP.active) return;
+  
+  const sseop = findSseop('c');
+  if (sseop) { playTurn('c', 0, { forceSseop: true }); return; }
+  
+  if (state.c.hand.length === 0) {
+    playTurn('c', null);
+    return;
+  }
+
   let best = 0, bv = -1e9;
   state.c.hand.forEach((c, i) => {
     const g = state.table.filter(t => t.month === c.month);
@@ -448,13 +678,24 @@ function cpuPlay() {
   });
   playTurn('c', best);
 }
-window.gsPlayRemote = function (idx) { if (state && state.turn === 'c' && !state.busy && !state.over && !state.pending) playTurn('c', idx); };
+window.gsPlayRemote = function (idx) {
+  if (!state || state.busy || state.over || state.pending) return;
+  if (state.turn !== 'c') return;
+  playTurn('c', idx);
+};
+window.gsSseopRemote = function (month) {
+  if (!state || state.busy || state.over || state.pending) return;
+  if (state.turn !== 'c') return;
+  const sseop = findSseop('c');
+  if (!sseop || sseop.month !== month) return;
+  playTurn('c', 0, { forceSseop: true });
+};
 window.gsIsBusy = function () { return !state || state.busy || state.over || state.pending; };
 window.gsTakeSnapshot = function () {
   if (!state) return null;
   return {
-    p: {hand: state.p.hand.map(cid), cap: state.p.cap.map(cid), go: state.p.go, score: state.p.score},
-    c: {hand: state.c.hand.map(cid), cap: state.c.cap.map(cid), go: state.c.go, score: state.c.score},
+    p: {hand: state.p.hand.map(cid), cap: state.p.cap.map(cid), go: state.p.go, goScore: state.p.goScore, score: state.p.score, shakes: state.p.shakes || 0, shakeMonths: state.p.shakeMonths || []},
+    c: {hand: state.c.hand.map(cid), cap: state.c.cap.map(cid), go: state.c.go, goScore: state.c.goScore, score: state.c.score, shakes: state.c.shakes || 0, shakeMonths: state.c.shakeMonths || []},
     table: state.table.map(cid), deck: state.deck.map(cid),
     turn: state.turn, over: state.over, msg: state.msg,
     picking: state.picking ? state.picking.slice() : null,
@@ -468,8 +709,8 @@ function fromSnap(snap) {
   const all = {}; makeDeck().forEach(c => all[c.id] = c);
   const get = id => all[id];
   state = {
-    p: {hand: snap.p.hand.map(get), cap: snap.p.cap.map(get), go: snap.p.go, score: snap.p.score},
-    c: {hand: snap.c.hand.map(get), cap: snap.c.cap.map(get), go: snap.c.go, score: snap.c.score},
+    p: {hand: snap.p.hand.map(get), cap: snap.p.cap.map(get), go: snap.p.go, goScore: snap.p.goScore || 0, score: snap.p.score, shakes: snap.p.shakes || 0, shakeMonths: snap.p.shakeMonths || []},
+    c: {hand: snap.c.hand.map(get), cap: snap.c.cap.map(get), go: snap.c.go, goScore: snap.c.goScore || 0, score: snap.c.score, shakes: snap.c.shakes || 0, shakeMonths: snap.c.shakeMonths || []},
     table: snap.table.map(get), deck: snap.deck.map(get),
     turn: snap.turn, busy: false, over: snap.over, msg: snap.msg,
     picking: snap.picking ? snap.picking.slice() : null,
@@ -507,7 +748,7 @@ function offerGoStop(w) {
   if (w === mySeat()) {
     sfx('go');
     const g = state[mySeat()].go + 1;
-    showModal(`<h2>${state[mySeat()].score} POINTS!</h2><p>GO: keep playing for a bigger win. Each Go adds a bonus (${g === 1 ? '+1' : g === 2 ? '+2' : 'x' + 2 ** (g - 2) + ' total'}), but if the opponent then scores more than you, you lose double (Go-bak).</p><p>STahp: end the game now and win.</p>
+    showModal(`<h2>${state[mySeat()].score} POINTS!</h2><p>GO: keep playing for a bigger win. Each Go adds a bonus (${g === 1 ? '+1' : g === 2 ? '+2' : 'x' + 2 ** (g - 2) + ' total'}).</p><p>STahp: end the game now and win.</p>
       <div class="row"><button class="btn go" onclick="goCall('${mySeat()}')">GO</button><button class="btn" onclick="stahpCall('${mySeat()}')">STahp</button></div>`, false);
   } else {
     state.msg = `${nameOf(w)} REACHED ${state[w].score} POINTS...`; render();
@@ -518,7 +759,14 @@ function offerGoStop(w) {
     setTimeout(() => (state.c.hand.length >= 4 && state.p.score <= 1 && state.c.go < 2) ? goCall('c') : stahpCall('c'), 1300);
   }
 }
-function goCall(w) { closeModal(); state[w].go++; sfx('go'); state.msg = `${nameOf(w)} CALLED GO x${state[w].go}!`; pass(w); }
+function goCall(w) {
+  closeModal();
+  state[w].go++;
+  state[w].goScore = state[w].score;
+  sfx('go');
+  state.msg = `${nameOf(w)} CALLED GO x${state[w].go}!`;
+  pass(w);
+}
 function stahpCall(w) { closeModal(); sfx('stahp'); finish(w, `${nameOf(w)} CALLED STahp.`); }
 window.goCall = goCall; window.stahpCall = stahpCall;
 
@@ -528,6 +776,8 @@ function exhaust() {
   if (p.go && !c.go) w = 'p'; else if (c.go && !p.go) w = 'c'; else if (p.go && c.go) w = p.score >= c.score ? 'p' : 'c';
   finish(w, w ? 'NO CARDS LEFT - THE PLAYER WHO CALLED GO WINS.' : 'NO CARDS LEFT AND NOBODY REACHED 7 - DRAW (NAGARI).');
 }
+
+/* ===================== PAYOUT ===================== */
 function payout(w) {
   const W = state[w], L = state[other(w)], lines = [['Score', W.score]];
   const add = Math.min(W.go, 2), mult = W.go >= 3 ? 2 ** (W.go - 2) : 1;
@@ -535,11 +785,16 @@ function payout(w) {
   if (mult > 1) lines.push([`Go x${W.go} doubling`, 'x' + mult]);
   let m = 1; const bak = (t) => { m *= 2; lines.push([t, 'x2']); };
   const wp = parts(W.cap), lp = parts(L.cap);
-  if (wp.pn >= 10 && lp.pn <= 5) bak('Pi-bak (loser has 5 or fewer pi)');
+  if (wp.pn >= 10 && lp.pn >= 1 && lp.pn <= 5) bak('Pi-bak (loser has 1–5 pi)');
   if (wp.nK >= 3 && lp.nK === 0) bak('Kwang-bak (loser has no kwang)');
   if (wp.nY >= 7) bak('Meong-bak (7+ yul)');
-  if (L.go > 0) bak('Go-bak (loser had called Go)');
-  return {lines, total: (W.score + add) * mult * m};
+  let shakeMult = 1;
+  const shakes = W.shakes || 0;
+  if (shakes > 0) {
+    shakeMult = Math.pow(2, shakes);
+    lines.push([`흔들기 x${shakes}`, 'x' + shakeMult]);
+  }
+  return {lines, total: (W.score + add) * mult * m * shakeMult};
 }
 function finish(w, why) {
   state.over = true; state.busy = true; state.pending = null;
@@ -567,13 +822,13 @@ function showResult() {
 let closable = true;
 function showModal(html, canClose = true) { closable = canClose; $('modalBox').innerHTML = html; $('modal').hidden = false; }
 function closeModal() { $('modal').hidden = true; }
-$('modal').onclick = e => { if (e.target === $('modal') && closable) closeModal(); };
+$('modal').onclick = e => { if (e.target ===$('modal') && closable) closeModal(); };
 
 const RULE = {
   [KW]: '3 Kwang = 3 pts (2 if it includes the Rain kwang) · 4 = 4 · 5 = 15',
   [YU]: '5+ Yul = 1 pt, +1 for each more · Godori (the 3 birds) = +5',
   [TT]: 'Each full ribbon set (3) = +3 · 5+ ribbons = 1 pt, +1 for each more',
-  [PI]: '10+ Pi value = 1 pt, +1 for each more · Bonus x2 = 2 pi, Bonus x4 = 4 pi'};
+  [PI]: '10+ Pi value = 1 pt, +1 for each more · 쌍피 (double pi) counts as 2'};
 function sections(t, cs) {
   const S = [], pt = parts(cs);
   if (t === KW) S.push({title: 'Kwang', cards: cs.filter(c => c.month !== 12)}, {title: 'Rain Kwang', cards: cs.filter(c => c.month === 12)});
@@ -584,9 +839,8 @@ function sections(t, cs) {
     S.push({title: 'Other ribbons (Rain)', cards: cs.filter(c => !SETS.some(s => s[0] === c.rib))});
   }
   if (t === PI) S.push(
-    {title: 'Bonus Pi (x4 / x2 — triggers steal)', cards: cs.filter(c => c.bonus)},
-    {title: 'Double Pi (each counts 2)', cards: cs.filter(c => !c.bonus && c.dbl)},
-    {title: 'Pi (each counts 1)', cards: cs.filter(c => !c.bonus && !c.dbl)}
+    {title: 'Double Pi (each counts 2)', cards: cs.filter(c => c.dbl)},
+    {title: 'Pi (each counts 1)', cards: cs.filter(c => !c.dbl)}
   );
   return S.filter(s => s.cards.length);
 }
@@ -616,3 +870,4 @@ function openPlayerCards(w) {
 function openMyCards() { openPlayerCards(mySeat()); }
 
 newGame();
+
