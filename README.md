@@ -1,8 +1,6 @@
 # 3dayson
 
-A collection of browser card games. Vanilla HTML/CSS/JS — no build step, no
-framework. Open `index.html` in a browser or serve the folder with any static
-server.
+zz
 
 ## Apps
 
@@ -40,20 +38,6 @@ links out to both games.
 └── SECURITY.md
 ```
 
-Each app is self-contained under `apps/<name>/` with the same `index.html` /
-`css/` / `js/` convention, so games can be moved, renamed, or deployed
-independently. Shared site-wide files live in `assets/`.
-
-## Running locally
-
-```sh
-# from the repo root — then open http://localhost:8000
-python3 -m http.server 8000
-```
-
-Or just open `index.html` directly in a browser. Online multiplayer needs
-internet access for the PeerJS CDN + cloud broker.
-
 ## Tech
 
 - Plain JavaScript, no bundler
@@ -62,5 +46,3 @@ internet access for the PeerJS CDN + cloud broker.
 
 ## Versioning
 
-History lives in git — use tags (e.g. `v1`, `v2`) for release snapshots
-instead of versioned zip filenames.
