@@ -121,11 +121,16 @@
     a.addEventListener('mouseenter', function () { if (k !== cur) select(k); });
     a.addEventListener('focus', function () { if (k !== cur) select(k); });
   });
+  // Don't hijack keys when the user is typing, using a modifier, or already on a real control.
+  function typing(t) {
+    return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+  }
   document.addEventListener('keydown', function (e) {
-    var key = e.key;
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
+    var key = e.key, onControl = e.target && /^(A|BUTTON)$/.test(e.target.tagName);
     if (key === 'ArrowDown' || key === 's' || key === 'S') { e.preventDefault(); select(cur + 1); }
     else if (key === 'ArrowUp' || key === 'w' || key === 'W') { e.preventDefault(); select(cur - 1); }
-    else if (key === 'Enter' || key === ' ') { e.preventDefault(); items[cur].click(); }
+    else if ((key === 'Enter' || key === ' ') && !onControl) { e.preventDefault(); items[cur].click(); }
   });
   function step(n) { select(cur + n); }
   function press(id, fn) { var el = $(id); if (el) el.addEventListener('click', function () { fn(); this.blur(); }); }
@@ -133,8 +138,10 @@
   press('btnDown', function () { step(1); });
   press('btnGo', function () { items[cur].click(); });
 
-  var wheelAt = 0;
+  // Only take over the wheel when the content fits on screen; otherwise let .ui scroll natively.
+  var wheelAt = 0, ui = document.querySelector('.ui');
   document.addEventListener('wheel', function (e) {
+    if (ui && ui.scrollHeight > ui.clientHeight + 1) return;
     e.preventDefault();
     var t = Date.now();
     if (!e.deltaY || t - wheelAt < 110) return;

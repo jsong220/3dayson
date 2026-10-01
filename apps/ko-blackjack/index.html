@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="build" content="3DAYSON-V2-2026-10-01">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1a472a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -56,7 +56,7 @@
 
   <main class="flex-grow flex flex-col items-center relative overflow-hidden p-4">
     <div id="trackerWrap" class="absolute top-36 -translate-y-12 left-2 sm:left-4 w-16 sm:w-28 z-0">
-      <button id="btnShuffle" class="absolute bottom-full left-0 mb-1.5 w-full" title="Reshuffle Shoe">↻
+      <button id="btnShuffle" class="absolute bottom-full left-0 mb-1.5 w-full" title="Reshuffle Shoe" aria-label="Reshuffle shoe">↻
         Shuffle</button>
       <div id="trackerBox"
         class="bg-black/70 p-2 sm:p-3 rounded-lg border border-gray-600 transition-opacity duration-300 w-full flex flex-col items-center shadow-lg">
@@ -89,7 +89,7 @@
         <div id="dealerHand" class="flex flex-row justify-center h-28"></div>
       </div>
       <div class="flex justify-center items-center min-h-[4rem] my-4 msg-row">
-        <div id="gameMessage"
+        <div id="gameMessage" role="status" aria-live="polite"
           class="text-2xl md:text-3xl font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] opacity-100 transition-opacity duration-300 text-center">
           Place your bet</div>
       </div>
@@ -110,10 +110,10 @@
           pot: $<span id="potDisplay">0</span></div>
       </div>
       <div class="flex flex-wrap justify-center gap-3 sm:gap-4 mt-1">
-        <button class="add-bet-btn casino-chip chip-blue" data-bet="10">$10</button>
-        <button class="add-bet-btn casino-chip chip-cyan" data-bet="20">$20</button>
-        <button class="add-bet-btn casino-chip chip-red" data-bet="50">$50</button>
-        <button class="add-bet-btn casino-chip chip-green" data-bet="100">$100</button>
+        <button class="add-bet-btn casino-chip chip-blue" data-bet="10" aria-label="Add $10 to bet">$10</button>
+        <button class="add-bet-btn casino-chip chip-cyan" data-bet="20" aria-label="Add $20 to bet">$20</button>
+        <button class="add-bet-btn casino-chip chip-red" data-bet="50" aria-label="Add $50 to bet">$50</button>
+        <button class="add-bet-btn casino-chip chip-green" data-bet="100" aria-label="Add $100 to bet">$100</button>
       </div>
       <div class="flex justify-center gap-3 w-full mt-2">
         <button id="btnClearBet"
@@ -126,7 +126,7 @@
 
     <!-- Right rail: toast sits above the action buttons, right edges aligned -->
     <div id="rightRail" class="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-10 w-16 sm:w-24">
-      <div id="hintToast"
+      <div id="hintToast" role="alert"
         class="absolute bottom-full right-0 mb-2 bg-red-900/95 border border-red-500 text-white font-semibold px-3 py-1.5 rounded-lg shadow-xl hidden pointer-events-none text-xs sm:text-sm w-[max-content] max-w-[70vw] text-center">
         <span id="hintText"></span>
       </div>
@@ -312,7 +312,7 @@
     <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-lg mx-4 max-h-[85vh] flex flex-col">
       <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
         <h2 class="text-xl font-bold text-white">Knock-Out (KO) Strategy Deviations</h2><button id="btnCloseDeviations"
-          class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+          class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close KO deviations">&times;</button>
       </div>
       <p class="text-xs text-gray-300 mb-4">When deviation training is enabled in settings, the app tests you on these
         KO Preferred plays. KO is unbalanced, so these are running counts measured against your shoe's pivot (+4) and
@@ -324,7 +324,7 @@
     <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-md mx-4 max-h-[85vh] flex flex-col">
       <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
         <h2 class="text-xl font-bold text-white">Session History &amp; Stats</h2><button id="btnCloseStats"
-          class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+          class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close stats">&times;</button>
       </div>
       <div class="bg-gray-800 rounded p-4 mb-4 text-center">
         <div class="text-sm text-gray-400">Current Session Accuracy</div>
@@ -356,7 +356,7 @@
     <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-md mx-4 max-h-[85vh] flex flex-col">
       <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
         <h2 id="rampTitle" class="text-xl font-bold text-white">KO Bet Ramp 1–8 Units</h2><button id="btnCloseRamp"
-          class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+          class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close bet ramp">&times;</button>
       </div>
       <div class="flex gap-2 mb-3"><button class="spread-btn flex-1 py-2 rounded font-bold text-sm transition-colors"
           data-spread="4">1–4</button><button class="spread-btn flex-1 py-2 rounded font-bold text-sm transition-colors"
@@ -372,6 +372,7 @@
   </div>
 
   <script src="js/game.js" defer></script>
+  <script src="js/a11y.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
   <script src="js/multiplayer.js" defer></script>
 </body>

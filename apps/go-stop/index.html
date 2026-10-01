@@ -32,33 +32,33 @@
       <div class="scores">
         <button type="button" class="btn" id="btnRules" title="How to play">RULES</button>
       </div>
-      <button type="button" class="money" id="bankBtn" title="View pot history"><b id="bank">$0</b></button>
+      <button type="button" class="money" id="bankBtn" title="View pot history" aria-label="Bankroll, view pot history"><b id="bank">$0</b></button>
       <div class="hbtns">
-        <button class="btn" id="btnLabels">LABELS: OFF</button>
-        <button class="btn icon" id="btnSound" title="Toggle sound">🔊</button>
-        <button class="btn icon" id="btnSettings" title="Settings">⚙️</button>
-        <button class="btn" id="btn2P">2P</button>
-        <button class="btn go" id="btnNew">RESTART</button>
+        <button type="button" class="btn" id="btnLabels" aria-pressed="false" title="Show month numbers on cards">LABELS: OFF</button>
+        <button type="button" class="btn icon" id="btnSound" title="Toggle sound" aria-label="Toggle sound">🔊</button>
+        <button type="button" class="btn icon" id="btnSettings" title="Settings" aria-label="Settings">⚙️</button>
+        <button type="button" class="btn" id="btn2P" aria-label="Play with a friend (2 player)">2P</button>
+        <button type="button" class="btn go" id="btnNew">RESTART</button>
       </div>
     </header>
     <main class="center">
-      <div id="cpuHand" class="hand cpu"></div>
+      <div id="cpuHand" class="hand cpu" role="img" aria-label="Opponent hand"></div>
       <div id="cpuCaptured" class="captured cpu-captured" data-empty="OPPONENT CAPTURED - CLICK TO VIEW"
-        aria-label="Opponent captured cards" title="Click to see collected cards"></div>
+        role="button" tabindex="0" aria-label="Opponent captured cards, open list" title="Click to see collected cards"></div>
       <section class="table">
         <!-- Moved #msg to the top of the table section -->
-        <div id="msg">Loading...</div>
-        <div id="tableCards"></div>
+        <div id="msg" role="status" aria-live="polite">Loading...</div>
+        <div id="tableCards" role="group" aria-label="Cards on the table"></div>
         <div class="deck-col">
-          <div id="deck" class="deck"><span id="deckN">20</span></div>
+          <div id="deck" class="deck" role="button" tabindex="0" aria-label="Deck"><span id="deckN">20</span></div>
         </div>
       </section>
-      <div id="myCaptured" class="captured" data-empty="YOUR CAPTURED CARDS - CLICK TO VIEW" aria-label="Your captured cards" title="Click to see collected cards"></div>
-      <div id="myHand" class="hand"></div>
+      <div id="myCaptured" class="captured" data-empty="YOUR CAPTURED CARDS - CLICK TO VIEW" role="button" tabindex="0" aria-label="Your captured cards, open list" title="Click to see collected cards"></div>
+      <div id="myHand" class="hand" role="group" aria-label="Your hand"></div>
     </main>
   </div>
   <div id="modal" class="modal" hidden>
-    <div class="box" id="modalBox"></div>
+    <div class="box" id="modalBox" role="dialog" aria-modal="true" tabindex="-1"></div>
   </div>
   <script src="js/art.js"></script>
   <script src="js/game.js"></script>

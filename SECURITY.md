@@ -1,21 +1,24 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+3dayson is a static site with no versioned releases. Only the latest commit on
+`main` is supported; fixes land there.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+## Reporting a vulnerability
 
-## Reporting a Vulnerability
+Please report security issues privately rather than in a public issue. Use
+GitHub's **Security → Report a vulnerability** option on this repository.
 
-Use this section to tell people how to report a vulnerability.
+Include what you found, how to reproduce it, and which app it affects
+(launcher, Go-Stop, or KO Blackjack). Expect an acknowledgement within a
+week. If the report is accepted, the fix goes to `main` and you'll be told
+when it ships; if it is declined, you'll get the reason.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+## Scope notes
+
+- Everything runs in the browser. There is no server or database, and game
+  progress is stored only in your own browser's `localStorage`.
+- Online 2-player rooms connect browsers directly through PeerJS and its
+  public broker. Treat a room code like a password: share it only with the
+  person you want to play with.

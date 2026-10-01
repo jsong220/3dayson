@@ -1060,3 +1060,17 @@ body.labels .card .tg { display: flex; }
     linear-gradient(#b3222f, #8b1f2b);
   box-shadow: inset 0 0 0 3px #b3222f, inset 0 0 0 4px #f3d7a0, 0 3px 8px #0008;
 }
+
+/* ---- keyboard focus + dialog polish (accessibility) ---- */
+.btn:focus-visible,
+.money:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px #f5c542;
+  border-radius: 6px;
+}
+
+.modal .box:focus {
+  outline: none;
+}

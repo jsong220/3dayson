@@ -498,6 +498,16 @@ function beginPlay() {
 }
 
 /* ===================== RENDER ===================== */
+/* Screen-reader text for a card, e.g. "Pine, month 1, Kwang". */
+function cardLabel(c) {
+  if (c.isBonus) return `Bonus card, ${c.bonusPi} pi`;
+  const e = eff(c), m = MN[c.month] || ('Month ' + c.month);
+  const t = e === KW ? (c.month === 12 ? 'Rain Kwang' : 'Kwang')
+    : e === YU ? (c.bird ? 'Bird' : 'Yul')
+    : e === TT ? (RN[c.rib] || 'Ribbon')
+    : (c.dbl ? 'Pi, double' : 'Pi');
+  return `${m}, month ${c.month}, ${t}`;
+}
 function cardHTML(c, extra = '') {
   const e = eff(c); let tg;
   if (c.isBonus) {
@@ -568,11 +578,18 @@ function render() {
     ? `GAME OVER - YOU ${state[me].score} : ${state[opp].score} ${nameOf(opp)}`
     : msgText;
 
-  $('myHand').innerHTML = state[me].hand.map((c, i) =>
-    `<div class="wrap" id="mh-${c.id}" data-i="${i}">${cardHTML(c, can ? 'can' : '')}${can && !c.isBonus && state.table.some(t => t.month === c.month && !t.isBonus) ? '<span class="hit">&#10003;</span>' : ''}</div>`
-  ).join('');
+  // Keep keyboard focus on the same card across re-renders (innerHTML replaces the nodes).
+  const fid = document.activeElement && document.activeElement.id;
+  const refocus = fid && /^(mh|tb)-/.test(fid) ? fid : null;
+
+  $('myHand').innerHTML = state[me].hand.map((c, i) => {
+    const hit = can && !c.isBonus && state.table.some(t => t.month === c.month && !t.isBonus);
+    const label = cardLabel(c) + (hit ? ', matches a card on the table' : '');
+    return `<div class="wrap" id="mh-${c.id}" data-i="${i}" role="button" tabindex="${can ? 0 : -1}" aria-disabled="${can ? 'false' : 'true'}" aria-label="${label}">${cardHTML(c, can ? 'can' : '')}${hit ? '<span class="hit" aria-hidden="true">&#10003;</span>' : ''}</div>`;
+  }).join('');
 
   $('cpuHand').innerHTML = state[opp].hand.map(c => `<div id="oh-${c.id}"><div class="card back"></div></div>`).join('');
+  $('cpuHand').setAttribute('aria-label', `Opponent hand, ${state[opp].hand.length} cards`);
 
   // Group the table by month in a single pass (insertion order preserved).
   const tableByMonth = new Map();
@@ -584,11 +601,15 @@ function render() {
   $('tableCards').innerHTML = months.map(m => {
     const g = tableByMonth.get(m), pk = state.picking && g.some(c => state.picking.includes(c.id));
     return `<div class="stack${g.length > 1 ? ' pair' : ''}${pk ? ' open' : ''}">${state.ppeok.has(m) && g.length === 3 ? '<span class="flag">PPEOK</span>' : ''}` +
-      g.map(c => `<div id="tb-${c.id}" data-id="${c.id}">${cardHTML(c, state.picking && state.picking.includes(c.id) ? 'pick' : '')}</div>`).join('') + '</div>';
+      g.map(c => { const pick = state.picking && state.picking.includes(c.id); return `<div id="tb-${c.id}" data-id="${c.id}" ${pick ? 'role="button" tabindex="0"' : 'role="img"'} aria-label="${pick ? 'Pick ' : ''}${cardLabel(c)}">${cardHTML(c, pick ? 'pick' : '')}</div>`; }).join('') + '</div>';
   }).join('');
 
   $('myCaptured').innerHTML = capturedHTML(me);
   $('cpuCaptured').innerHTML = capturedHTML(opp);
+  $('myCaptured').setAttribute('aria-label', `Your captured cards, ${state[me].pt.total} points. Open list`);
+  $('cpuCaptured').setAttribute('aria-label', `Opponent captured cards, ${state[opp].pt.total} points. Open list`);
+  $('deck').setAttribute('aria-label', `Deck, ${state.deck.length} cards left` + (state.over ? '. Open to view' : ''));
+  if (refocus) { const el = $(refocus); if (el && el.tabIndex >= 0) el.focus({ preventScroll: true }); }
   paintBank();
   fitLayout();
 }
@@ -1345,14 +1366,52 @@ function showResult() {
 }
 
 /* ===================== MODAL + GROUP POPUP ===================== */
-let closable = true;
-function showModal(html, canClose = true) { closable = canClose; $('modalBox').innerHTML = html; $('modal').hidden = false; }
-function closeModal() { $('modal').hidden = true; }
+let closable = true, modalOpener = null;
+function showModal(html, canClose = true) {
+  const modal = $('modal'), box = $('modalBox');
+  if (modal.hidden) modalOpener = document.activeElement;   // remember where focus was
+  closable = canClose; box.innerHTML = html; modal.hidden = false;
+  const h = box.querySelector('h2');
+  if (h) { h.id = 'modalTitle'; box.setAttribute('aria-labelledby', 'modalTitle'); } else box.removeAttribute('aria-labelledby');
+  (box.querySelector('button') || box).focus({ preventScroll: true });
+}
+function closeModal() {
+  $('modal').hidden = true;
+  const o = modalOpener; modalOpener = null;
+  if (o && o !== document.body && document.contains(o) && o.focus) o.focus({ preventScroll: true });
+}
 // Wire modal buttons by id once the modal HTML is in the DOM.
 function wireModalButtons(map, delay = 0) {
   setTimeout(() => { for (const id in map) { const el = $(id); if (el) el.onclick = map[id]; } }, delay);
 }
 $('modal').onclick = e => { if (e.target ===$('modal') && closable) closeModal(); };
+
+/* Keyboard: Enter/Space activate role="button" cards, arrows move along the hand,
+   Esc closes dialogs, Tab stays inside an open dialog. */
+['myHand', 'tableCards', 'deck', 'myCaptured', 'cpuCaptured'].forEach(id => {
+  $(id).addEventListener('keydown', e => {
+    const t = e.target;
+    if ((e.key === 'Enter' || e.key === ' ') && t.getAttribute('role') === 'button') { e.preventDefault(); t.click(); }
+    else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && (id === 'myHand' || id === 'tableCards')) {
+      const items = [...$(id).querySelectorAll('[role="button"][tabindex="0"]')], i = items.indexOf(t);
+      if (i < 0) return;
+      e.preventDefault();
+      items[(i + (e.key === 'ArrowRight' ? 1 : -1) + items.length) % items.length].focus();
+    }
+  });
+});
+document.addEventListener('keydown', e => {
+  if ($('modal').hidden) return;
+  if (e.key === 'Escape' && closable) { e.preventDefault(); closeModal(); }
+  else if (e.key === 'Tab') {
+    const f = [...$('modalBox').querySelectorAll('button,[href],input,select,[tabindex]:not([tabindex="-1"])')].filter(x => !x.disabled && x.offsetParent !== null);
+    if (!f.length) { e.preventDefault(); return; }
+    const first = f[0], last = f[f.length - 1];
+    if (!$('modalBox').contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+});
 
 function openPlayerCards(w) {
   const P = state[w], pt = P.pt;
@@ -1452,7 +1511,7 @@ newGame();
 /* ===================== LABELS TOGGLE ===================== */
 (function () {
   const LS = 'goStop.labels';
-  const apply = on => { document.body.classList.toggle('labels', on); const b = $('btnLabels'); if (b) b.textContent = on ? 'LABELS: ON' : 'LABELS: OFF'; };
+  const apply = on => { document.body.classList.toggle('labels', on); const b = $('btnLabels'); if (b) { b.textContent = on ? 'LABELS: ON' : 'LABELS: OFF'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); } };
   let on = false; try { on = localStorage.getItem(LS) === '1'; } catch (e) {}
   apply(on);
   const b = $('btnLabels');

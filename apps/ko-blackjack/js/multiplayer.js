@@ -15,6 +15,7 @@
   var pill = document.createElement('div');
   pill.style.cssText = 'position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:60;font:10px monospace;background:rgba(0,0,0,.8);color:#4ade80;padding:4px 10px;border:1px solid #4ade80;border-radius:999px;display:none;pointer-events:none;white-space:nowrap';
   document.body.appendChild(pill);
+  pill.setAttribute('role', 'status');
   function status(t) { pill.textContent = t; pill.style.display = t ? 'block' : 'none'; }
 
   /* ---------- wrap engine functions ---------- */
@@ -131,7 +132,7 @@
     if (net.host > 0) setTimeout(function () { if (seq === dealSeq) chipBurst(); }, 150);
     setTimeout(function () { if (seq === dealSeq) sfx(net.host > 0 ? 'win' : net.host < 0 ? 'lose' : 'push'); }, 150);
     say('Round net ' + fmtMoney(net.host), netColor(net.host), 'Round net ' + fmtMoney(net.guest), netColor(net.guest));
-    updateStatsUI(); if (window.saveSessionStats) saveSessionStats();
+    updateStatsUI();
     renderTable();
     setTimeout(function () {
       if (seq !== dealSeq) return;
@@ -178,6 +179,8 @@
   ov.style.cssText = 'position:fixed;inset:0;z-index:100;background:rgba(6,4,22,.93);display:none;align-items:center;justify-content:center;font:12px/2 monospace;color:#fff;text-align:center';
   ov.innerHTML = '<div style="width:min(340px,90vw);border:3px solid #fff;padding:18px;background:#0b0620;box-shadow:6px 6px 0 #ff4fd8"><div style="font-size:18px;color:#ffdd2d;margin-bottom:8px">2 PLAYER</div><div id="mpBody"></div></div>';
   document.body.appendChild(ov);
+  ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', '2 player lobby');
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && ov.style.display === 'flex') ov.style.display = 'none'; });
   var B = 'display:block;width:100%;margin:8px 0;padding:10px;font:inherit;font-weight:bold;color:#06210f;background:#4ade80;border:3px solid #fff;cursor:pointer';
   function view(html) { $('mpBody').innerHTML = html; }
   function menu() {

@@ -9,12 +9,15 @@
   var pill = document.createElement('div');
   pill.style.cssText = 'position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:60;font:10px monospace;background:rgba(0,0,0,.8);color:#4ade80;padding:4px 10px;border:1px solid #4ade80;border-radius:999px;display:none;pointer-events:none;white-space:nowrap';
   document.body.appendChild(pill);
+  pill.setAttribute('role', 'status');
   function status(t) { pill.textContent = t; pill.style.display = t ? 'block' : 'none'; }
 
   var ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;z-index:100;background:rgba(6,10,8,.93);display:none;align-items:center;justify-content:center;font:12px/2 monospace;color:#eef5ee;text-align:center';
   ov.innerHTML = '<div style="width:min(340px,90vw);border:3px solid #fff;padding:18px;background:#0b1a12;box-shadow:6px 6px 0 #f5c542"><div style="font-size:18px;color:#f5c542;margin-bottom:8px">GO STahp · 2P</div><div id="mpBody"></div></div>';
   document.body.appendChild(ov);
+  ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', '2 player lobby');
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && ov.style.display === 'flex') ov.style.display = 'none'; });
   var B = 'display:block;width:100%;margin:8px 0;padding:10px;font:inherit;font-weight:bold;color:#0b1a12;background:#8bd6a8;border:3px solid #fff;cursor:pointer';
   // BACK (back to 2P menu) + CLOSE (dismiss overlay) button pair, in the two
   // color variants used across the 2P screens.
