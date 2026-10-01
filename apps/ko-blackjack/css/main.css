@@ -2367,3 +2367,103 @@ input:focus-visible {
     outline-offset: 2px;
     box-shadow: 0 0 0 5px #5eead4;
 }
+
+/* ---- trainer extras: count check, mistake log, shortcuts ---- */
+.tr-input {
+    width: 6rem;
+    padding: .5rem .75rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #fff;
+    background: #1f2937;
+    border: 2px solid #4b5563;
+    border-radius: .5rem
+}
+
+.tr-signbtn {
+    padding: .65rem .75rem;
+    font-weight: 800;
+    color: #e5e7eb;
+    background: #374151;
+    border-radius: .5rem
+}
+
+.tr-signbtn:hover {
+    background: #4b5563
+}
+
+.tr-kbd {
+    display: inline-block;
+    min-width: 1.75rem;
+    padding: .1rem .45rem;
+    text-align: center;
+    font: 700 .8rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #e5e7eb;
+    background: #374151;
+    border: 1px solid #6b7280;
+    border-bottom-width: 3px;
+    border-radius: .35rem
+}
+
+.tr-bar {
+    height: .375rem;
+    background: #374151;
+    border-radius: 999px;
+    overflow: hidden
+}
+
+.tr-bar>i {
+    display: block;
+    height: 100%;
+    background: #f87171
+}
+
+.tr-chip {
+    display: inline-block;
+    min-width: 2rem;
+    padding: .1rem .45rem;
+    text-align: center;
+    font-size: .75rem;
+    font-weight: 700;
+    color: #e5e7eb;
+    background: #374151;
+    border-radius: 999px
+}
+
+.tr-chip.ok {
+    color: #a7f3d0;
+    background: #065f46
+}
+
+.tr-chip.near {
+    color: #fde68a;
+    background: #78350f
+}
+
+.tr-chip.bad {
+    color: #fecaca;
+    background: #7f1d1d
+}
+
+/* ---- small utilities used by the trainer windows (not in the purged base) ---- */
+.gap-1\.5 { gap: .375rem }
+.min-h-\[1rem\] { min-height: 1rem }
+.mt-0\.5 { margin-top: .125rem }
+.mt-4 { margin-top: 1rem }
+.p-2\.5 { padding: .625rem }
+.underline { text-decoration-line: underline }
+.text-red-300 { color: rgb(252 165 165) }
+.space-y-1\.5>:not([hidden])~:not([hidden]) { margin-top: .375rem }
+.space-y-5>:not([hidden])~:not([hidden]) { margin-top: 1.25rem }
+
+/* ---- $5 and $25 chips (reKO ramp bets are $5, $10, $15, $20, $25, $50, $75, $100) ---- */
+.chip-white {
+    background: radial-gradient(circle, #f9fafb 40%, #9ca3af 100%);
+    color: #111827
+}
+
+.chip-purple {
+    background: radial-gradient(circle, #a855f7 40%, #6b21a8 100%);
+    color: #fff
+}

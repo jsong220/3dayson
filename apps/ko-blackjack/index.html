@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="build" content="3DAYSON-V2-2026-10-01">
+  <meta name="build" content="3DAYSON-V3-2026-10-01">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1a472a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -28,8 +28,8 @@
         class="text-xs bg-emerald-800 hover:bg-emerald-700 px-2.5 py-1 rounded transition-colors text-white font-bold">Basic
         Strategy</button>
       <button id="btnOpenDeviations"
-        class="text-xs bg-emerald-800 hover:bg-emerald-700 px-2.5 py-1 rounded transition-colors text-white font-bold">KO
-        Deviations</button>
+        class="text-xs bg-emerald-800 hover:bg-emerald-700 px-2.5 py-1 rounded transition-colors text-white font-bold">reKO
+        Indexes</button>
       <button id="btnOpenRamp"
         class="text-xs bg-emerald-800 hover:bg-emerald-700 px-2.5 py-1 rounded transition-colors text-white font-bold">Bet
         Ramp</button>
@@ -110,15 +110,17 @@
           pot: $<span id="potDisplay">0</span></div>
       </div>
       <div class="flex flex-wrap justify-center gap-3 sm:gap-4 mt-1">
+        <button class="add-bet-btn casino-chip chip-white" data-bet="5" aria-label="Add $5 to bet">$5</button>
         <button class="add-bet-btn casino-chip chip-blue" data-bet="10" aria-label="Add $10 to bet">$10</button>
         <button class="add-bet-btn casino-chip chip-cyan" data-bet="20" aria-label="Add $20 to bet">$20</button>
+        <button class="add-bet-btn casino-chip chip-purple" data-bet="25" aria-label="Add $25 to bet">$25</button>
         <button class="add-bet-btn casino-chip chip-red" data-bet="50" aria-label="Add $50 to bet">$50</button>
         <button class="add-bet-btn casino-chip chip-green" data-bet="100" aria-label="Add $100 to bet">$100</button>
       </div>
       <div class="flex justify-center gap-3 w-full mt-2">
         <button id="btnClearBet"
           class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-5 rounded-full shadow-lg text-sm transition-colors">Clear</button>
-        <button id="btnDeal"
+        <button id="btnDeal" title="Deal (Space)" aria-keyshortcuts="Space"
           class="flex-grow bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded-full shadow-lg text-sm disabled:opacity-50 transition-colors"
           disabled>Deal Hand</button>
       </div>
@@ -131,21 +133,21 @@
         <span id="hintText"></span>
       </div>
       <div id="actionControls" class="hidden flex flex-col gap-2 sm:gap-3 w-full">
-        <button id="btnHit"
+        <button id="btnHit" title="Hit (H)" aria-keyshortcuts="H"
           class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[11px] sm:text-base w-full disabled:opacity-50">Hit</button>
-        <button id="btnStand"
+        <button id="btnStand" title="Stand (S)" aria-keyshortcuts="S"
           class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[11px] sm:text-base w-full disabled:opacity-50">Stand</button>
-        <button id="btnDouble"
+        <button id="btnDouble" title="Double (D)" aria-keyshortcuts="D"
           class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[10px] sm:text-base w-full disabled:opacity-50 tracking-tighter sm:tracking-normal">Double</button>
-        <button id="btnSplit"
+        <button id="btnSplit" title="Split (P)" aria-keyshortcuts="P"
           class="bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[11px] sm:text-base w-full disabled:opacity-50">Split</button>
-        <button id="btnSurrender"
+        <button id="btnSurrender" title="Surrender (R)" aria-keyshortcuts="R"
           class="hidden bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-100 font-semibold py-3 sm:py-4 rounded-lg shadow-xl transition-colors text-[9px] sm:text-base w-full disabled:opacity-50 tracking-tighter sm:tracking-normal">Surrender</button>
       </div>
 
       <!-- Post Game Controls on the right side -->
       <div id="postGameControls" class="hidden flex flex-col justify-center w-full">
-        <button id="btnNext"
+        <button id="btnNext" title="Next hand (N or Space)" aria-keyshortcuts="N Space"
           class="bg-blue-600 hover:bg-blue-500 border border-blue-400 text-white font-bold py-4 rounded-lg shadow-xl transition-colors text-xs sm:text-base leading-tight w-full">Next<br>Hand</button>
       </div>
     </div>
@@ -262,7 +264,7 @@
           class="flex justify-between items-center cursor-pointer"><span>Show KO Count</span><input type="checkbox"
             id="tglCount" checked
             class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label><label
-          class="flex justify-between items-center cursor-pointer"><span>Use KO Deviations (KO Preferred)</span><input
+          class="flex justify-between items-center cursor-pointer"><span>Use reKO Indexes (+2)</span><input
             type="checkbox" id="tglDev" checked
             class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
         <label class="flex justify-between items-center cursor-pointer"><span>Auto Next Hand</span><input
@@ -302,7 +304,25 @@
             <option value="hard">Hard Hands</option>
             <option value="soft">Soft Hands</option>
             <option value="split">Splits / Pairs</option>
+            <option value="weak">Weak Spots</option>
           </select></div>
+        <p class="text-xs text-gray-500">Weak Spots deals the hands you have missed before (about 4 in 5 hands). Build the
+          list by playing with Strategy Enforcement on.</p>
+        <label class="flex justify-between items-center cursor-pointer"><span>Count Checks</span><input
+            type="checkbox" id="tglCountCheck"
+            class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
+        <div class="flex justify-between items-center"><span>Check Frequency</span><select id="selCheckFreq"
+            class="bg-gray-800 border border-gray-600 rounded px-2 py-1 outline-none text-white text-sm">
+            <option value="rare">Rarely</option>
+            <option value="some" selected>Sometimes</option>
+            <option value="often">Often</option>
+            <option value="every">Every hand</option>
+          </select></div>
+        <p class="text-xs text-gray-500">Asks for the Running Count between hands, whether or not the count display
+          is showing.</p>
+        <button id="btnOpenShortcuts" type="button"
+          class="w-full text-sm bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-200 font-semibold py-2 rounded">Keyboard
+          shortcuts</button>
       </div><button id="btnCloseSettings"
         class="mt-6 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded">Save &amp; Close</button>
     </div>
@@ -311,12 +331,13 @@
   <div id="deviationsModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
     <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-lg mx-4 max-h-[85vh] flex flex-col">
       <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
-        <h2 class="text-xl font-bold text-white">Knock-Out (KO) Strategy Deviations</h2><button id="btnCloseDeviations"
-          class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close KO deviations">&times;</button>
+        <h2 class="text-xl font-bold text-white">reKO Strategy Indexes</h2><button id="btnCloseDeviations"
+          class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close reKO indexes">&times;</button>
       </div>
-      <p class="text-xs text-gray-300 mb-4">When deviation training is enabled in settings, the app tests you on these
-        KO Preferred plays. KO is unbalanced, so these are running counts measured against your shoe's pivot (+4) and
-        key count, not Hi-Lo true counts. Everything not listed follows basic strategy.</p>
+      <p class="text-xs text-gray-300 mb-4">When index training is enabled in settings, the app tests you on these
+        reKO plays (rules from qfit.com/rekostrategy.htm). reKO uses one index for every play: the running count
+        of +2. Below +2 play basic strategy. At +2 and above play the hands below differently. Everything not listed
+        follows basic strategy.</p>
       <div id="deviationsContainer" class="flex-grow overflow-y-auto pr-2 space-y-3"></div>
     </div>
   </div>
@@ -347,6 +368,9 @@
       <div id="accChart" class="bg-gray-800 rounded p-2 mb-4"></div>
       <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Saved Past Sessions</h3>
       <div id="leaderboardList" class="flex-grow overflow-y-auto pr-2 space-y-2"></div>
+      <button id="btnOpenMistakes" type="button"
+        class="mt-3 w-full text-sm bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-200 font-semibold py-2 rounded">Mistakes
+        &amp; count checks</button>
       <button id="btnResetStats"
         class="mt-3 w-full text-sm bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-200 font-semibold py-2 rounded">Save
         session &amp; reset score</button>
@@ -355,24 +379,104 @@
   <div id="rampModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
     <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-md mx-4 max-h-[85vh] flex flex-col">
       <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
-        <h2 id="rampTitle" class="text-xl font-bold text-white">KO Bet Ramp 1–8 Units</h2><button id="btnCloseRamp"
+        <h2 id="rampTitle" class="text-xl font-bold text-white">reKO Bet Ramp</h2><button id="btnCloseRamp"
           class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close bet ramp">&times;</button>
       </div>
-      <div class="flex gap-2 mb-3"><button class="spread-btn flex-1 py-2 rounded font-bold text-sm transition-colors"
-          data-spread="4">1–4</button><button class="spread-btn flex-1 py-2 rounded font-bold text-sm transition-colors"
-          data-spread="6">1–6</button><button class="spread-btn flex-1 py-2 rounded font-bold text-sm transition-colors"
-          data-spread="8">1–8</button><button class="spread-btn flex-1 py-2 rounded font-bold text-sm transition-colors"
-          data-spread="10">1–10</button></div>
+      
       <div id="rampSummary"></div>
       <div id="rampRows" class="flex-grow overflow-y-auto pr-2 space-y-2"></div>
-      <p class="text-[11px] text-gray-500 mt-3">Bet 1 unit below the key count, then scale up as the count climbs past
-        the pivot. Key count and pivot follow the standard KO tables for your deck setting; the step sizes are a scaled
-        guide, so adjust to your bankroll and table limits.</p>
+      <p class="text-[11px] text-gray-500 mt-3">Bets for each running count, from the reKO chapter of the book.
+        Pick your own unit size and maximum bet and level off there. The book says these ramps need a bankroll of at
+        least $10,000. The 4-deck setting uses the book's combined four-/six-deck ramp.</p>
+    </div>
+  </div>
+
+  <div id="countCheckModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
+    <div class="bg-gray-900 p-6 rounded-lg border border-gray-600 text-center max-w-sm w-full mx-4">
+      <h3 class="text-xl font-bold text-white mb-2">Count check</h3>
+      <div id="ccQuestion">
+        <p class="text-gray-300 mb-1">What is the Running Count?</p>
+        <p class="text-xs text-gray-500 mb-4">This shoe's starting count was <span id="ccIRC">0</span>. Count every card dealt so far.</p>
+        <div class="flex gap-2 justify-center items-center mb-2">
+          <input id="ccInput" class="tr-input" type="text" inputmode="numeric" autocomplete="off" maxlength="4"
+            aria-label="Running count">
+          <button id="btnCountSign" type="button" class="tr-signbtn" aria-label="Switch between plus and minus"
+            title="Plus / minus">+/&minus;</button>
+        </div>
+        <p id="ccError" class="text-red-400 text-xs min-h-[1rem] mb-2" role="alert"></p>
+      </div>
+      <div id="ccResult" class="hidden mb-4" role="status" aria-live="polite">
+        <p id="ccVerdict" class="text-lg font-bold mb-1"></p>
+        <p id="ccDetail" class="text-sm text-gray-300"></p>
+      </div>
+      <div class="flex gap-3 justify-center">
+        <button id="btnCountSubmit" type="button"
+          class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded">Check</button>
+        <button id="btnCloseCountCheck" type="button"
+          class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mistakesModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
+    <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-lg mx-4 max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2 shrink-0">
+        <h2 class="text-xl font-bold text-white">Mistakes &amp; Count Checks</h2><button id="btnCloseMistakes"
+          class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close mistakes">&times;</button>
+      </div>
+      <div id="mistakesBody" class="flex-grow overflow-y-auto pr-2 space-y-5 text-sm"></div>
+      <div class="flex gap-2 mt-4 shrink-0">
+        <button id="btnDrillWeak" type="button"
+          class="flex-grow bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded text-sm disabled:opacity-50">Practice
+          weak spots</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="shortcutsModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
+    <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-sm mx-4 max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2 shrink-0">
+        <h2 class="text-xl font-bold text-white">Keyboard shortcuts</h2><button id="btnCloseShortcuts"
+          class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close shortcuts">&times;</button>
+      </div>
+      <div class="overflow-y-auto pr-2 text-sm text-gray-300 space-y-4">
+        <div>
+          <div class="text-xs text-gray-500 uppercase mb-2">Playing a hand</div>
+          <ul class="space-y-1.5">
+            <li class="flex justify-between"><span>Hit</span><kbd class="tr-kbd">H</kbd></li>
+            <li class="flex justify-between"><span>Stand</span><kbd class="tr-kbd">S</kbd></li>
+            <li class="flex justify-between"><span>Double</span><kbd class="tr-kbd">D</kbd></li>
+            <li class="flex justify-between"><span>Split</span><kbd class="tr-kbd">P</kbd></li>
+            <li class="flex justify-between"><span>Surrender</span><kbd class="tr-kbd">R</kbd></li>
+            <li class="flex justify-between"><span>Insurance: yes / no</span><span><kbd class="tr-kbd">Y</kbd> <kbd class="tr-kbd">N</kbd></span></li>
+          </ul>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase mb-2">Betting</div>
+          <ul class="space-y-1.5">
+            <li class="flex justify-between"><span>Add $5 / $10 / $20 / $25 / $50 / $100</span><span><kbd class="tr-kbd">1</kbd>&ndash;<kbd class="tr-kbd">6</kbd></span></li>
+            <li class="flex justify-between"><span>Clear bet</span><kbd class="tr-kbd">C</kbd></li>
+            <li class="flex justify-between"><span>Deal</span><kbd class="tr-kbd">Space</kbd></li>
+            <li class="flex justify-between"><span>Next hand</span><span><kbd class="tr-kbd">N</kbd> <kbd class="tr-kbd">Space</kbd></span></li>
+          </ul>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase mb-2">Anywhere</div>
+          <ul class="space-y-1.5">
+            <li class="flex justify-between"><span>Mute / unmute</span><kbd class="tr-kbd">M</kbd></li>
+            <li class="flex justify-between"><span>This list</span><kbd class="tr-kbd">?</kbd></li>
+            <li class="flex justify-between"><span>Close a window</span><kbd class="tr-kbd">Esc</kbd></li>
+          </ul>
+        </div>
+        <p class="text-xs text-gray-500">Shortcuts pause while a window is open or you are typing in a field.</p>
+      </div>
     </div>
   </div>
 
   <script src="js/game.js" defer></script>
   <script src="js/a11y.js" defer></script>
+  <script src="js/trainer.js" defer></script>
+  <script src="js/shortcuts.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
   <script src="js/multiplayer.js" defer></script>
 </body>
