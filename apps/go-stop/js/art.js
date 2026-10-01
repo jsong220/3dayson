@@ -142,7 +142,7 @@
       return P('M8 34Q30 6 52 34Z', '#c8302c', INK, .6) + P('M30 34V60', null, INK, 1) + P('M8 34L30 12M52 34L30 12M20 30L30 12M40 30L30 12', null, '#7a1a17', .5) +
         C(28, 50, 4.5, '#f0c9a0') + P('M22 48Q28 42 34 48', '#3a2a1c') + P('M20 56L36 56L38 84L18 84Z', '#4a6f9c', INK, .5) + P('M24 84V90M32 84V90', null, INK, 2);
     },
-    '2Y': function () { return P('M12 74Q30 60 40 50', null, '#5a3b22', 2.4).replace('M12', 'M12') + bird(31, 44, 1.5, '#9aa63c', '#6f7a24', '#eadf8a'); },
+    '2Y': function () { return P('M12 74Q30 60 40 50', null, '#5a3b22', 2.4) + bird(31, 44, 1.5, '#9aa63c', '#6f7a24', '#eadf8a'); },
     '4Y': function () { return P('M14 74Q34 68 50 62', null, '#5a3b22', 2.4) + bird(32, 60, 1.6, '#6f7a90', '#3f4658', '#ddd8ca', '#2b2b2b'); },
     '5Y': function () {
       var o = '';
@@ -208,7 +208,7 @@
       var s = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>';
       defs.forEach(function (d, i) {
         var m = d[0], t = d[1], x = d[2];
-        s += '<symbol id="card-c' + i + '" viewBox="0 0 60 90">' + R(0, 0, 60, 90, '#f6edd6') + face(m, t, t === 'T' ? x : x, i) + '</symbol>';
+        s += '<symbol id="card-c' + i + '" viewBox="0 0 60 90">' + R(0, 0, 60, 90, '#f6edd6') + face(m, t, x, i) + '</symbol>';
       });
       document.body.insertAdjacentHTML('afterbegin', s + '</defs></svg>');
     }

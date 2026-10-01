@@ -5,6 +5,13 @@ const MN = ['', 'Pine', 'Plum', 'Cherry', 'Wisteria', 'Iris', 'Peony', 'Bush Clo
 const MC = ['', '#cde8c4', '#f6c9c9', '#fbd3e6', '#d9cdee', '#cbd8f5', '#f2b9c9', '#e8e3b0', '#dcdce8', '#f7e7a1', '#f2c9a5', '#cdb8dc', '#b9d7e6'];
 const RN = {hong: 'HONG', cheong: 'CHEONG', cho: 'CHO', rain: 'RAIN'};
 const SETS = [['hong', 'Hongdan (red, poetry)', '#e04040'], ['cheong', 'Cheongdan (blue)', '#3f78e8'], ['cho', 'Chodan (red, plain)', '#f08a3a']];
+const RIB_ORDER = new Map(SETS.map((s, i) => [s[0], i])); // ribbon name -> fixed display order
+const sortByMonthVal = a => a.sort((x, y) => x.month - y.month || val(y) - val(x)); // shared sort comparator
+function groupByMonth(hand) {
+  const byMonth = {};
+  hand.forEach(c => { (byMonth[c.month] = byMonth[c.month] || []).push(c); });
+  return byMonth;
+}
 const DEFS = [[1,'K'],[1,'T','hong'],[1,'P'],[1,'P'], [2,'Y',{b:1}],[2,'T','hong'],[2,'P'],[2,'P'], [3,'K'],[3,'T','hong'],[3,'P'],[3,'P'],
   [4,'Y',{b:1}],[4,'T','cho'],[4,'P'],[4,'P'], [5,'Y'],[5,'T','cho'],[5,'P'],[5,'P'], [6,'Y'],[6,'T','cheong'],[6,'P'],[6,'P'],
   [7,'Y'],[7,'T','cho'],[7,'P'],[7,'P'], [8,'K'],[8,'Y',{b:1}],[8,'P'],[8,'P'], [9,'Y',{sp:1}],[9,'T','cheong'],[9,'P'],[9,'P'],
@@ -27,7 +34,7 @@ function makeDeck() {
 }
 const eff = c => c.special ? (c.countAs === 'yul' ? YU : PI) : c.type;
 const piVal = c => c.bonusPi ? c.bonusPi : (c.dbl ? 2 : 1);
-const val = c => eff(c) === KW ? (c.month === 12 ? 6 : 8) : eff(c) === YU ? (c.bird ? 6 : 4) : eff(c) === TT ? 3 : piVal(c);
+const val = c => { const e = eff(c); return e === KW ? (c.month === 12 ? 6 : 8) : e === YU ? (c.bird ? 6 : 4) : e === TT ? 3 : piVal(c); };
 const CARD_INDEX = Object.fromEntries(makeDeck().map(c => [c.id, c]));
 if (window.GSArt) GSArt.install(DEFS);
 // Bonus card art (simple gold cards)
@@ -47,9 +54,17 @@ function shuffle(a) {
 
 /* ===================== SCORING ===================== */
 function parts(cards) {
-  const kw = cards.filter(c => eff(c) === KW), yl = cards.filter(c => eff(c) === YU), tt = cards.filter(c => eff(c) === TT);
-  const pn = cards.reduce((n, c) => n + (eff(c) === PI ? piVal(c) : 0), 0);
-  const r = {nK: kw.length, nY: yl.length, nT: tt.length, pn, birds: yl.filter(c => c.bird).length, sets: {}, setN: {}};
+  // Single pass: partition by effective type and total pi value in one walk.
+  const kw = [], yl = [], tt = [];
+  let pn = 0, birds = 0;
+  for (const c of cards) {
+    const e = eff(c);
+    if (e === KW) kw.push(c);
+    else if (e === YU) { yl.push(c); if (c.bird) birds++; }
+    else if (e === TT) tt.push(c);
+    else if (e === PI) pn += piVal(c);
+  }
+  const r = {nK: kw.length, nY: yl.length, nT: tt.length, pn, birds, sets: {}, setN: {}};
   r.kw = kw.length === 5 ? 15 : kw.length === 4 ? 4 : kw.length === 3 ? (kw.some(c => c.month === 12) ? 2 : 3) : 0;
   r.godori = r.birds === 3 ? 5 : 0;
   r.yl = yl.length >= 5 ? yl.length - 4 : 0;
@@ -85,7 +100,22 @@ let audioCtx = null, soundOn = true;
 try { soundOn = localStorage.getItem('goStop.sound') !== '0'; } catch(e) {}
 function ac() { if (!audioCtx) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; audioCtx = new C(); } if (audioCtx.state === 'suspended') audioCtx.resume(); return audioCtx; }
 function tone(a, t, f, dur, g, type, to) { const o = a.createOscillator(), gn = a.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur); gn.gain.setValueAtTime(0.0001, t); gn.gain.exponentialRampToValueAtTime(g, t + 0.01); gn.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(gn); gn.connect(a.destination); o.start(t); o.stop(t + dur + 0.02); }
-function noise(a, t, dur, f, g, type) { const n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; const src = a.createBufferSource(), fl = a.createBiquadFilter(), gn = a.createGain(); src.buffer = buf; fl.type = type || 'bandpass'; fl.frequency.value = f; fl.Q.value = .9; gn.gain.setValueAtTime(g, t); gn.gain.exponentialRampToValueAtTime(.001, t + dur); src.connect(fl); fl.connect(gn); gn.connect(a.destination); src.start(t); }
+const noiseBufs = {};
+function noiseBuf(a, dur) {
+  // Cache the white-noise buffer per length: generating it costs a full
+  // fill loop, and replaying the same noise through the bandpass filter
+  // is perceptually identical.
+  const n = Math.floor(a.sampleRate * dur);
+  let buf = noiseBufs[n];
+  if (!buf) {
+    buf = a.createBuffer(1, n, a.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    noiseBufs[n] = buf;
+  }
+  return buf;
+}
+function noise(a, t, dur, f, g, type) { const buf = noiseBuf(a, dur); const src = a.createBufferSource(), fl = a.createBiquadFilter(), gn = a.createGain(); src.buffer = buf; fl.type = type || 'bandpass'; fl.frequency.value = f; fl.Q.value = .9; gn.gain.setValueAtTime(g, t); gn.gain.exponentialRampToValueAtTime(.001, t + dur); src.connect(fl); fl.connect(gn); gn.connect(a.destination); src.start(t); }
 function sfx(name, skipRelay) {
   if (!skipRelay && window.MP && MP.active && MP.me === 'host') {
     try { MP.send({ t: 'sfx', n: name }); } catch (e) {}
@@ -204,32 +234,17 @@ function funAnim(selector, cls, dur=800) {
   el.classList.add(cls);
   setTimeout(()=>el.classList.remove(cls), dur);
 }
-function showGoBanner(n) {
-  // Remove any existing banner
-  document.querySelectorAll('.go-banner').forEach(e=>e.remove());
+function showBanner(cls, text, ms = 1700) {
+  document.querySelectorAll('.' + cls).forEach(e => e.remove());
   const el = document.createElement('div');
-  el.className = 'go-banner';
-  el.textContent = `${n} GO!`;
+  el.className = 'banner ' + cls;
+  el.textContent = text;
   document.body.appendChild(el);
-  setTimeout(()=>el.remove(), 1700);
+  setTimeout(() => el.remove(), ms);
 }
-function showPoopBanner() {
-  document.querySelectorAll('.poop-banner').forEach(e=>e.remove());
-  const el = document.createElement('div');
-  el.className = 'poop-banner';
-  el.textContent = '💩';
-  document.body.appendChild(el);
-  setTimeout(()=>el.remove(), 1700);
-}
-function showBonusBanner(pi) {
-  // Clear bonus-card animation, styled like the GO banner
-  document.querySelectorAll('.bonus-banner').forEach(e=>e.remove());
-  const el = document.createElement('div');
-  el.className = 'bonus-banner';
-  el.textContent = `BONUS +${pi} PI`;
-  document.body.appendChild(el);
-  setTimeout(()=>el.remove(), 1700);
-}
+const showGoBanner = n => showBanner('go-banner', `${n} GO!`);
+const showPoopBanner = () => showBanner('poop-banner', '💩');
+const showBonusBanner = pi => showBanner('bonus-banner', `BONUS +${pi} PI`);
 
 /* ===================== STATE ===================== */
 let state = null, bankroll = loadBank(), potDecks = loadPotDecks();
@@ -264,6 +279,8 @@ function paintBank() {
   el.textContent = money(bankroll); el.classList.toggle('neg', bankroll < 0);
 }
 
+/* Cards dealt most recently, for the deal-in animation (hoisted: reused every deal step). */
+const DEAL_SEL = '#myHand .wrap:last-child .card, #cpuHand div:last-child .card, #tableCards .stack:last-child .card';
 function newGame() {
   if (window.MP && MP.active && MP.me === 'guest') { MP.send({ t: 'new' }); return; }
   const mySeq = ++gameSeq; // supersede any in-flight deal animation from a previous newGame
@@ -277,10 +294,9 @@ function newGame() {
     bad = cnt(shuffled.slice(0, 10)) || cnt(shuffled.slice(10, 20)) || cnt(shuffled.slice(20, 28));
     if (!bad) deck = shuffled;
   } while (bad);
-  const sort = a => a.sort((x, y) => x.month - y.month || val(y) - val(x));
   const first = Math.random() < 0.5 ? 'p' : 'c';
-  const pHand = sort(deck.slice(0, 10));
-  const cHand = sort(deck.slice(10, 20));
+  const pHand = sortByMonthVal(deck.slice(0, 10));
+  const cHand = sortByMonthVal(deck.slice(10, 20));
   const tableCards = deck.slice(20, 28);
   const remaining = deck.slice(28);
   // Start with empty hands/table for dealing animation
@@ -293,7 +309,7 @@ function newGame() {
     picking: null, pickRes: null, pending: null, ppeok: new Set(), ppeokBonus: {}, fourDone: new Set(),
     result: null, bankDelta: 0
   };
-  recalc(); closeModal(); paintBank(); render(); broadcast();
+  recalc(); closeModal(); paintBank(); sync();
   // Dealing animation: cards fly in one by one
   (async () => {
     // deal 5 rounds: p, c, table pattern for visual fun
@@ -314,11 +330,10 @@ function newGame() {
       // keep sorted for final look, but animate
       state.msg = `DEALING... ${Math.min(i+1,10)}/10`;
       render();
-      // add deal animation class to latest cards
-      document.querySelectorAll('#myHand .wrap:last-child .card, #cpuHand div:last-child .card, #tableCards .stack:last-child .card').forEach(el => {
-        el.classList.add('deal-anim');
-        setTimeout(() => el.classList.remove('deal-anim'), 450);
-      });
+      // add deal animation class to latest cards (one query + one timer per step)
+      const fresh = document.querySelectorAll(DEAL_SEL);
+      fresh.forEach(el => el.classList.add('deal-anim'));
+      setTimeout(() => fresh.forEach(el => el.classList.remove('deal-anim')), 450);
       sfx('deal', true);
       await sleep(110);
     }
@@ -326,11 +341,10 @@ function newGame() {
     // Fix deck to remaining (we shifted 28 times, should match)
     state.deck = remaining;
     // sort hands nicely
-    const sort2 = a => a.sort((x, y) => x.month - y.month || val(y) - val(x));
-    state.p.hand = sort2(state.p.hand);
-    state.c.hand = sort2(state.c.hand);
+    state.p.hand = sortByMonthVal(state.p.hand);
+    state.c.hand = sortByMonthVal(state.c.hand);
     state.msg = `${nameOf(first)} GOES FIRST`;
-    recalc(); render(); broadcast();
+    recalc(); sync();
     sfx('dealDone', true);
     // Bonus cards dealt onto the starting table are auto-captured ("played")
     // by the first player only. Bonus cards dealt into hands just stay in hand.
@@ -338,17 +352,17 @@ function newGame() {
     if (tableBonus.length) {
       state.table = state.table.filter(c => !c.isBonus);
       state[first].cap.push(...tableBonus);
-      recalc(); render(); broadcast();
+      recalc(); sync();
       showBonusBanner(tableBonus.reduce((a, c) => a + c.bonusPi, 0));
       sfx('bonus', true);
       state.msg = `${nameOf(first)} TAKES ${tableBonus.length} BONUS CARD${tableBonus.length > 1 ? 'S' : ''} FROM THE TABLE!`;
-      render(); broadcast();
+      sync();
       await sleep(1100);
       if (mySeq !== gameSeq) return;
       for (let i = 0; i < tableBonus.length; i++) await stealWithAnim(first);
       if (mySeq !== gameSeq) return;
       state.msg = `${nameOf(first)} GOES FIRST`;
-      render(); broadcast();
+      sync();
       await sleep(400);
     }
     if (mySeq !== gameSeq) return;
@@ -371,12 +385,11 @@ function showRestartModal() {
      </div>
      <p style="opacity:.7;font-size:12px;margin-top:8px">New Pot saves this pot (${cur} after ${decks} deck${decks === 1 ? '' : 's'}) to your pot history.</p>
      <div class="row"><button class="btn ghost" id="restartCancel">CANCEL</button></div>`, true);
-  setTimeout(() => {
-    const k = $('restartKeep'), n = $('restartNew'), c = $('restartCancel');
-    if (k) k.onclick = () => { closeModal(); newGame(); };
-    if (n) n.onclick = () => { closeModal(); startNewPot(); };
-    if (c) c.onclick = () => { closeModal(); };
-  }, 0);
+  wireModalButtons({
+    restartKeep: () => { closeModal(); newGame(); },
+    restartNew: () => { closeModal(); startNewPot(); },
+    restartCancel: () => closeModal()
+  });
 }
 
 function startNewPot() {
@@ -422,8 +435,7 @@ window.openPotHistory = openPotHistory;
 /* ===================== 흔들기 (SHAKE) ===================== */
 function findShakes(who) {
   if (!state) return [];
-  const byMonth = {};
-  state[who].hand.forEach(c => { (byMonth[c.month] = byMonth[c.month] || []).push(c); });
+  const byMonth = groupByMonth(state[who].hand);
   return Object.keys(byMonth).filter(m => byMonth[m].length === 3).map(m => +m);
 }
 function runShakePhase(done) {
@@ -435,7 +447,7 @@ function runShakePhase(done) {
     sfx('shake');
     funAnim('#cpuHand', 'shake-wobble', 1000);
     state.msg = `${nameOf('c')} SHAKES x${cMonths.length}! (${cMonths.map(m => MN[m]).join(', ')})`;
-    render(); broadcast();
+    sync();
   }
   const shouldPromptHostP = (pMonths.length > 0) && (!window.MP || !MP.active || MP.me === 'host');
   if (shouldPromptHostP) {
@@ -447,7 +459,7 @@ function runShakePhase(done) {
         funAnim('#myHand', 'shake-wobble', 1000);
         state.msg = `YOU SHAKE x${pMonths.length}! (${pMonths.map(m => MN[m]).join(', ')})`;
       }
-      render(); broadcast();
+      sync();
       done();
     });
     return;
@@ -466,20 +478,19 @@ function showShakeModal(months, callback) {
        <button class="btn go" id="shakeYes">SHAKE ×${mult}</button>
        <button class="btn" id="shakeNo">SKIP</button>
      </div>`, false);
-  setTimeout(() => {
-    const yes = $('shakeYes'), no =$('shakeNo');
-    if (yes) yes.onclick = () => { closeModal(); callback(true); };
-    if (no) no.onclick = () => { closeModal(); callback(false); };
-  }, 0);
+  wireModalButtons({
+    shakeYes: () => { closeModal(); callback(true); },
+    shakeNo: () => { closeModal(); callback(false); }
+  });
 }
 
 function beginPlay() {
   state.busy = false;
   state.msg = state.msg || (state.turn === mySeat() ? 'YOUR TURN' : '');
-  render(); broadcast();
+  sync();
   if (state.turn === 'c') {
     if (window.MP && MP.active) {
-      state.msg = 'FRIEND IS PLAYING...'; render(); broadcast();
+      state.msg = 'FRIEND IS PLAYING...'; sync();
     } else {
       setTimeout(cpuPlay, 750);
     }
@@ -488,7 +499,7 @@ function beginPlay() {
 
 /* ===================== RENDER ===================== */
 function cardHTML(c, extra = '') {
-  const e = eff(c); let tg, rib = '';
+  const e = eff(c); let tg;
   if (c.isBonus) {
     tg = `<i class="tg pi2"><b>BONUS ${c.bonusPi} PI</b></i>`;
     return `<div class="card t-${e} ${extra}" title="Bonus ${c.bonusPi} Pi"><b class="mo">B</b><svg class="face"><use href="#card-${c.id}"/></svg>${tg}</div>`;
@@ -500,8 +511,8 @@ function cardHTML(c, extra = '') {
   return `<div class="card t-${e} ${extra}" title="${MN[c.month] || ''}"><b class="mo">${c.month}</b><svg class="face"><use href="#card-${c.id}"/></svg>${tg}</div>`;
 }
 function sortGroup(t, cards) {
-  const k = c => t === TT ? [SETS.findIndex(s => s[0] === c.rib) < 0 ? 9 : SETS.findIndex(s => s[0] === c.rib)] : t === YU ? [c.bird ? 0 : 1] : t === PI ? [c.dbl ? 0 : 1] : [c.month === 12 ? 1 : 0];
-  return cards.slice().sort((a, b) => k(a)[0] - k(b)[0] || a.month - b.month);
+  const k = c => t === TT ? (RIB_ORDER.has(c.rib) ? RIB_ORDER.get(c.rib) : 9) : t === YU ? (c.bird ? 0 : 1) : t === PI ? (c.dbl ? 0 : 1) : (c.month === 12 ? 1 : 0);
+  return cards.slice().sort((a, b) => k(a) - k(b) || a.month - b.month);
 }
 function capturedHTML(w) {
   const cap = state[w].cap;
@@ -510,9 +521,12 @@ function capturedHTML(w) {
   const emptyMsg = w === mySeat() ? 'YOUR CAPTURED CARDS - CLICK TO VIEW' : 'OPPONENT CAPTURED - CLICK TO VIEW';
   if (!cap.length) return totalBadge + `<span class="cap-empty-msg">${emptyMsg}</span>`;
   const order = [KW, YU, TT, PI];
+  // Partition once instead of filtering per type (insertion order preserved).
+  const buckets = { [KW]: [], [YU]: [], [TT]: [], [PI]: [] };
+  cap.forEach(c => { const b = buckets[eff(c)]; if (b) b.push(c); });
   let out = totalBadge;
   order.forEach((t, gi) => {
-    const g = cap.filter(c => eff(c) === t);
+    const g = buckets[t];
     if (!g.length) return;
     if (gi > 0) out += '<div class="grp-sep"></div>';
     sortGroup(t, g).forEach(c => {
@@ -560,9 +574,15 @@ function render() {
 
   $('cpuHand').innerHTML = state[opp].hand.map(c => `<div id="oh-${c.id}"><div class="card back"></div></div>`).join('');
 
-  const months = [...new Set(state.table.map(c => c.month))].sort((a, b) => a - b);
+  // Group the table by month in a single pass (insertion order preserved).
+  const tableByMonth = new Map();
+  for (const c of state.table) {
+    const g = tableByMonth.get(c.month);
+    if (g) g.push(c); else tableByMonth.set(c.month, [c]);
+  }
+  const months = [...tableByMonth.keys()].sort((a, b) => a - b);
   $('tableCards').innerHTML = months.map(m => {
-    const g = state.table.filter(c => c.month === m), pk = state.picking && g.some(c => state.picking.includes(c.id));
+    const g = tableByMonth.get(m), pk = state.picking && g.some(c => state.picking.includes(c.id));
     return `<div class="stack${g.length > 1 ? ' pair' : ''}${pk ? ' open' : ''}">${state.ppeok.has(m) && g.length === 3 ? '<span class="flag">PPEOK</span>' : ''}` +
       g.map(c => `<div id="tb-${c.id}" data-id="${c.id}">${cardHTML(c, state.picking && state.picking.includes(c.id) ? 'pick' : '')}</div>`).join('') + '</div>';
   }).join('');
@@ -596,9 +616,17 @@ function fitRow(el, prefStep) {
   step = Math.max(step, Math.min(pref, 6));            // never collapse fully
   el.style.setProperty('--ov', (step - cw).toFixed(1) + 'px');
 }
+let fitTableCache = null; // {key, tcw}: the fit is a pure function of table content + container size
 function fitTable() {
   const table = document.querySelector('.table'), t = $('tableCards');
   if (!table || !t) return;
+  // Cache key captures everything that can change the fitted width: the exact
+  // table contents (grouping + PPEOK flags derive from these), container size.
+  const key = t.clientWidth + 'x' + t.clientHeight + '|' + state.table.map(c => c.id).join(',') + '|' + [...state.ppeok].sort((a, b) => a - b).join(',');
+  if (fitTableCache && fitTableCache.key === key) {
+    table.style.setProperty('--tcw', fitTableCache.tcw);
+    return;
+  }
   const fits = () => t.scrollHeight <= t.clientHeight + 1 && t.scrollWidth <= t.clientWidth + 1;
   let lo = 22, hi = 92, best = lo;
   while (lo <= hi) {
@@ -607,6 +635,7 @@ function fitTable() {
     if (fits()) { best = mid; lo = mid + 1; } else hi = mid - 1;
   }
   table.style.setProperty('--tcw', best + 'px');
+  fitTableCache = { key, tcw: best + 'px' };
 }
 let fitBusy = false;
 function fitLayout() {
@@ -652,7 +681,6 @@ const _btnRules = $('btnRules'); if (_btnRules) _btnRules.onclick = () => openRu
 const _btnSound = $('btnSound'); if (_btnSound) { _btnSound.textContent = soundOn ? '🔊' : '🔇'; _btnSound.onclick = () => toggleSound(); }
 const _btnSettings = $('btnSettings'); if (_btnSettings) _btnSettings.onclick = () => openSettings();
 $('btnNew').onclick = showRestartModal;
-$('btnMyCards').onclick = () => openMyCards();
 const _bankBtn = $('bankBtn'); if (_bankBtn) _bankBtn.onclick = () => openPotHistory();
 
 /* ===================== ANIMATION ===================== */
@@ -673,7 +701,7 @@ function pick(options) {
     state.picking = options.map(c => c.id);
     state.pickRes = res;
     state.msg = 'TWO MATCHES - TAP THE CARD YOU WANT';
-    render(); broadcast();
+    sync();
   });
 }
 window.gsResolvePick = function (cardId) {
@@ -681,7 +709,7 @@ window.gsResolvePick = function (cardId) {
   const c = state.table.find(x => x.id === cardId);
   const r = state.pickRes;
   state.picking = null; state.pickRes = null; state.msg = '';
-  render(); broadcast();
+  sync();
   r(c);
 };
 
@@ -742,7 +770,7 @@ async function stealWithAnim(who) {
   foe.cap.splice(idx, 1);
   me.cap.push(card);
   recalc();
-  render(); broadcast();
+  sync();
   await sleep(200);
   return card;
 }
@@ -751,8 +779,7 @@ async function stealWithAnim(who) {
 function findSseop(who) {
   if (!state) return null;
   const me = state[who];
-  const byMonth = {};
-  me.hand.forEach(c => { (byMonth[c.month] = byMonth[c.month] || []).push(c); });
+  const byMonth = groupByMonth(me.hand);
   for (const m in byMonth) {
     if (byMonth[m].length === 3) {
       const t = state.table.find(tc => tc.month === +m);
@@ -768,7 +795,6 @@ function sseopForCard(who, card) {
   if (!s.handCards.some(c => c.id === card.id)) return null;
   return s;
 }
-window.gsHasSseop = function (who) { return !!findSseop(who); };
 
 function showSseopModal(month, callback) {
   showModal(
@@ -779,11 +805,10 @@ function showSseopModal(month, callback) {
        <button class="btn go" id="sseopYes">폭탄 (PLAY 3)</button>
        <button class="btn" id="sseopNo">PLAY 1</button>
      </div>`, false);
-  setTimeout(() => {
-    const y = $('sseopYes'), n =$('sseopNo');
-    if (y) y.onclick = () => { closeModal(); callback(true); };
-    if (n) n.onclick = () => { closeModal(); callback(false); };
-  }, 0);
+  wireModalButtons({
+    sseopYes: () => { closeModal(); callback(true); },
+    sseopNo: () => { closeModal(); callback(false); }
+  });
 }
 
 async function playSseop(who, sseop, before) {
@@ -797,7 +822,7 @@ async function playSseop(who, sseop, before) {
     const i = me.hand.findIndex(h => h.id === c.id);
     if (i >= 0) me.hand.splice(i, 1);
   });
-  render(); broadcast();
+  sync();
 
   sfx('sseop');
   if (window.MP && MP.active && MP.me === 'host') {
@@ -817,7 +842,7 @@ async function playSseop(who, sseop, before) {
   state.fourDone.add(who + '-' + sseop.month);
   recalc();
   await chooseCup(who);
-  render(); broadcast();
+  sync();
   await sleep(400);
 
   sfx('four');
@@ -825,7 +850,7 @@ async function playSseop(who, sseop, before) {
   if (stolen) tags.push('+1 PI');
 
   state.msg = `${nameOf(who)}: ${tags.join(' · ')}`;
-  render(); broadcast();
+  sync();
   await sleep(700);
 
   if (!state.p.hand.length && !state.c.hand.length && !state.deck.length) {
@@ -920,7 +945,7 @@ async function playTurn(who, idx, opts) {
     from = rect((who === mySeat() ? 'mh-' : 'oh-') + H.id);
   }
 
-  render(); broadcast();
+  sync();
   const same = m => state.table.filter(c => c.month === m);
   const take = cs => { cs.forEach(c => { state.table = state.table.filter(t => t.id !== c.id); }); cap.push(...cs); };
   const remoteC = who === 'c' && window.MP && MP.active && MP.me === 'host';
@@ -935,10 +960,10 @@ async function playTurn(who, idx, opts) {
     showBonusBanner(H.bonusPi);
     sfx('bonus');
     H = null; chosen = null;
-    render(); broadcast();
+    sync();
   } else if (H) {
     const k = same(H.month).length;
-    state.table.push(H); render(); broadcast();
+    state.table.push(H); sync();
     netFly(from, 'tb-' + H.id, H);
     await land(H, from); sfx('deal');
     chosen = k === 2 ? await choose(same(H.month).filter(c => c.id !== H.id)) : null;
@@ -956,14 +981,14 @@ async function playTurn(who, idx, opts) {
     tags.push(`BONUS +${S.bonusPi} PI (flip)`);
     showBonusBanner(S.bonusPi);
     sfx('bonus');
-    render(); broadcast();
+    sync();
     await sleep(1000);
     S = state.deck.pop();
   }
   if (S) {
-    render(); broadcast();
+    sync();
     const df = rect('deck');
-    state.table.push(S); render(); broadcast();
+    state.table.push(S); sync();
     netFly(df, 'tb-' + S.id, S);
     await land(S, df); sfx('flip');
   }
@@ -971,8 +996,8 @@ async function playTurn(who, idx, opts) {
   const settle = async (X, pre) => {
     if (!X) return;
     const g = same(X.month), n = g.length - 1;
-    if (n === 1) { take(g); render(); broadcast(); }
-    else if (n === 2) { take([X, pre || await choose(g.filter(c => c.id !== X.id))]); render(); broadcast(); }
+    if (n === 1) { take(g); sync(); }
+    else if (n === 2) { take([X, pre || await choose(g.filter(c => c.id !== X.id))]); sync(); }
     else if (n === 3) {
       take(g);
       // Bonus cards parked on this PPEOK pile go to whoever clears it
@@ -984,7 +1009,7 @@ async function playTurn(who, idx, opts) {
       });
       if (parked.length) tags.push(`BONUS +${parked.reduce((a, c) => a + c.bonusPi, 0)} PI (PPEOK)`);
       if (state.ppeok.delete(X.month)) { tags.push('PPEOK CLEARED!'); }
-      render(); broadcast();
+      sync();
     }
   };
 
@@ -1008,7 +1033,7 @@ async function playTurn(who, idx, opts) {
         state.ppeokBonus[b.id] = H.month;
       });
       tags.push('BONUS TO PPEOK!');
-      render(); broadcast();
+      sync();
     } else {
       flippedBonus.forEach(b => { bonusCaps.push(b); steals++; });
     }
@@ -1053,7 +1078,7 @@ async function playTurn(who, idx, opts) {
   }
 
   state.msg = tags.length ? `${nameOf(who)}: ${tags.join(' · ')}` : '';
-  render(); broadcast();
+  sync();
   const flashEl = who === mySeat() ? $('myCaptured') :$('cpuCaptured');
   if (cap.length && flashEl) { flashEl.classList.add('flash'); setTimeout(() => flashEl.classList.remove('flash'), 950); }
   await sleep(cap.length ? 600 : 250);
@@ -1069,10 +1094,10 @@ async function playTurn(who, idx, opts) {
 }
 
 function pass(w) {
-  state.turn = other(w); state.busy = false; state.pending = null; render(); broadcast();
+  state.turn = other(w); state.busy = false; state.pending = null; sync();
   if (state.turn === 'c') {
     if (window.MP && MP.active) {
-      state.msg = 'FRIEND IS PLAYING...'; render(); broadcast();
+      state.msg = 'FRIEND IS PLAYING...'; sync();
     } else {
       setTimeout(() => {
         if (!state || state.over || state.busy || state.turn !== 'c') return;
@@ -1120,6 +1145,8 @@ window.gsSseopRemote = function (month) {
   if (!sseop || sseop.month !== month) return;
   playTurn('c', 0, { forceSseop: true });
 };
+// Exposed so the 2P layer can hand the 'c' seat back to the CPU if the guest disconnects.
+window.cpuPlay = cpuPlay;
 window.gsIsBusy = function () { return !state || state.busy || state.over || state.pending; };
 window.gsTakeSnapshot = function () {
   if (!state) return null;
@@ -1156,10 +1183,10 @@ function showCupModal(done) {
     <p style="color:#8bd6a8">Your score would be <b>${a}</b> as Double Pi, or <b>${b}</b> as Yul.</p>
     <p style="color:#ff8b8b">This choice is final - you can't change it later.</p>
     <div class="row"><button class="btn go" id="cupPi">DOUBLE PI (${a})</button><button class="btn go" id="cupYul">YUL (${b})</button></div>`, false);
-  setTimeout(() => {
-    $('cupPi').onclick = () => { closeModal(); done('pi'); };
-    $('cupYul').onclick = () => { closeModal(); done('yul'); };
-  }, 0);
+  wireModalButtons({
+    cupPi: () => { closeModal(); done('pi'); },
+    cupYul: () => { closeModal(); done('yul'); }
+  });
 }
 async function chooseCup(who) {
   const cup = state[who].cap.find(c => c.special && !c.chosen);
@@ -1167,14 +1194,14 @@ async function chooseCup(who) {
   let pick;
   if (who === mySeat()) pick = await new Promise(res => showCupModal(res));
   else if (window.MP && MP.active && MP.me === 'host') {
-    state.msg = 'FRIEND IS CHOOSING HOW TO COUNT THE CUP...'; render(); broadcast();
+    state.msg = 'FRIEND IS CHOOSING HOW TO COUNT THE CUP...'; sync();
     MP.send({ t: 'cup' });
     pick = await new Promise(res => { cupRes = res; });
   } else {
     const [a, b] = cupScores(who); pick = b > a ? 'yul' : 'pi';
   }
   cup.countAs = pick; cup.chosen = true;
-  state.msg = ''; recalc(); render(); broadcast();
+  state.msg = ''; recalc(); sync();
 }
 window.gsCupRemote = v => { if (cupRes && (v === 'pi' || v === 'yul')) { const r = cupRes; cupRes = null; r(v); } };
 window.gsAskCup = () => showCupModal(v => MP.send({ t: 'cupPick', v }));
@@ -1205,6 +1232,8 @@ function broadcast() {
   if (!window.MP || !MP.active || MP.me !== 'host') return;
   const snap = window.gsTakeSnapshot(); if (snap) MP.send({t:'state', s:snap});
 }
+// Re-render locally and push the snapshot to the guest; the common tail of game events.
+const sync = () => { render(); broadcast(); };
 function netFly(srcRect, dstId, card) {
   if (!window.MP || !MP.active || MP.me !== 'host') return;
   if (!srcRect) return;
@@ -1319,36 +1348,12 @@ function showResult() {
 let closable = true;
 function showModal(html, canClose = true) { closable = canClose; $('modalBox').innerHTML = html; $('modal').hidden = false; }
 function closeModal() { $('modal').hidden = true; }
+// Wire modal buttons by id once the modal HTML is in the DOM.
+function wireModalButtons(map, delay = 0) {
+  setTimeout(() => { for (const id in map) { const el = $(id); if (el) el.onclick = map[id]; } }, delay);
+}
 $('modal').onclick = e => { if (e.target ===$('modal') && closable) closeModal(); };
 
-const RULE = {
-  [KW]: '3 Kwang = 3 pts (2 if it includes the Rain kwang) · 4 = 4 · 5 = 15',
-  [YU]: '5+ Yul = 1 pt, +1 for each more · Godori (the 3 birds) = +5',
-  [TT]: 'Each full ribbon set (3) = +3 · 5+ ribbons = 1 pt, +1 for each more',
-  [PI]: '10+ Pi value = 1 pt, +1 for each more · 쌍피 (double pi) counts as 2'};
-function sections(t, cs) {
-  const S = [], pt = parts(cs);
-  if (t === KW) S.push({title: 'Kwang', cards: cs.filter(c => c.month !== 12)}, {title: 'Rain Kwang', cards: cs.filter(c => c.month === 12)});
-  if (t === YU) S.push({title: 'Godori birds', badge: pt.birds === 3 ? '+5' : `${pt.birds}/3`, done: pt.birds === 3, cards: cs.filter(c => c.bird)}, {title: 'Other Yul', cards: cs.filter(c => !c.bird)});
-  if (t === TT) {
-    SETS.map(([k, n]) => ({title: n, badge: pt.setN[k] >= 3 ? '+3' : `${pt.setN[k]}/3`, done: pt.setN[k] >= 3, n: pt.setN[k], cards: cs.filter(c => c.rib === k)}))
-      .sort((a, b) => (b.done - a.done) || (b.n - a.n)).forEach(s => S.push(s));
-    S.push({title: 'Other ribbons (Rain)', cards: cs.filter(c => !SETS.some(s => s[0] === c.rib))});
-  }
-  if (t === PI) S.push(
-    {title: 'Double Pi (each counts 2)', cards: cs.filter(c => c.dbl)},
-    {title: 'Pi (each counts 1)', cards: cs.filter(c => !c.dbl)}
-  );
-  return S.filter(s => s.cards.length);
-}
-function openGroup(w, t) {
-  const cs = state[w].cap.filter(c => eff(c) === t); if (!cs.length) return;
-  const key = {[KW]: 'K', [YU]: 'Y', [TT]: 'T', [PI]: 'P'}[t], pt = state[w].pt;
-  const cup = t === PI && cs.some(c => c.special) ? '<p>Month-9 cup is counted as Double Pi here (your choice, locked in).</p>' : (t === YU && cs.some(c => c.special) ? '<p>Month-9 cup is counted as a Yul here (your choice, locked in).</p>' : '');
-  showModal(`<h2>${nameOf(w) === 'YOU' ? 'YOUR' : nameOf(w)} ${t.toUpperCase()} - ${cs.length} cards</h2><div class="total">Group worth: ${pt.g[key]} pt${pt.g[key] === 1 ? '' : 's'}</div><p>${RULE[t]}</p>${cup}` +
-    sections(t, sortGroup(t, cs)).map(s => `<div class="sec"><h4>${s.title} (${s.cards.length})${s.badge ? `<em class="${s.done ? 'done' : ''}">${s.badge}</em>` : ''}</h4><div class="cards">${s.cards.map(c => cardHTML(c, 'lg')).join('')}</div></div>`).join('') +
-    '<div class="row"><button class="btn" onclick="closeModal()">CLOSE</button></div>', true);
-}
 function openPlayerCards(w) {
   const P = state[w], pt = P.pt;
   const order = [KW, YU, TT, PI];
@@ -1365,12 +1370,11 @@ function openPlayerCards(w) {
     <div class="row"><button class="btn" onclick="closeModal()">CLOSE</button></div>`, true);
 }
 function openDeck() {
-  const d = state.deck.slice().sort((a, b) => a.month - b.month || val(b) - val(a));
+  const d = sortByMonthVal(state.deck.slice());
   showModal(`<h2>DECK - ${d.length} card${d.length === 1 ? '' : 's'} left</h2>` +
     (d.length ? `<p>These cards were never flipped.</p><div class="sec"><div class="cards">${d.map(c => cardHTML(c, 'lg')).join('')}</div></div>` : '<p>The deck was played all the way through - nothing left.</p>') +
     '<div class="row"><button class="btn" onclick="closeModal()">CLOSE</button></div>', true);
 }
-function openMyCards() { openPlayerCards(mySeat()); }
 function openRules() {
   showModal(`<h2>HOW TO PLAY</h2>
   <div class="sec" style="text-align:left;max-width:520px">
@@ -1423,11 +1427,9 @@ function openSettings() {
     <button class="btn go" id="settingsSave">SAVE</button>
     <button class="btn ghost" id="settingsClose">CLOSE</button>
   </div>`, true);
-  setTimeout(() => {
-    const saveBtn = document.getElementById('settingsSave');
-    const closeBtn = document.getElementById('settingsClose');
-    if (closeBtn) closeBtn.onclick = () => { sfx('click', true); closeModal(); };
-    if (saveBtn) saveBtn.onclick = () => {
+  wireModalButtons({
+    settingsClose: () => { sfx('click', true); closeModal(); },
+    settingsSave: () => {
       const sel = document.querySelector('input[name="stopPts"]:checked');
       if (sel) {
         stopPoints = parseInt(sel.value, 10);
@@ -1440,7 +1442,7 @@ function openSettings() {
       }
       sfx('click', true);
       closeModal();
-    };
+    }
   }, 50);
 }
 

@@ -37,11 +37,16 @@
   var resumeWalkAt = 0;
   function rand(a, b) { return a + Math.random() * (b - a); }
   var timer = rand(3, 6);
-  function place() { hero.style.transform = 'translateX(' + x + 'px) scaleX(' + dir + ')'; }
+  // Cache the stage width: it only changes on resize, so don't do a layout
+  // read on every animation frame.
+  var stageW = stage.clientWidth;
+  window.addEventListener('resize', function () { stageW = stage.clientWidth; });
+  var lastX = null, lastDir = null;
+  function place() { if (x === lastX && dir === lastDir) return; lastX = x; lastDir = dir; hero.style.transform = 'translateX(' + x + 'px) scaleX(' + dir + ')'; }
 
   function tick(t) {
     var dt = Math.min((t - last) / 1000, 0.1); last = t;
-    var max = Math.max(0, stage.clientWidth - fw);
+    var max = Math.max(0, stageW - fw);
 
     if (heroDir !== 0) {
       x += heroDir * HERO.speed * dt;

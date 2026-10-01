@@ -16,6 +16,16 @@
   ov.innerHTML = '<div style="width:min(340px,90vw);border:3px solid #fff;padding:18px;background:#0b1a12;box-shadow:6px 6px 0 #f5c542"><div style="font-size:18px;color:#f5c542;margin-bottom:8px">GO STahp · 2P</div><div id="mpBody"></div></div>';
   document.body.appendChild(ov);
   var B = 'display:block;width:100%;margin:8px 0;padding:10px;font:inherit;font-weight:bold;color:#0b1a12;background:#8bd6a8;border:3px solid #fff;cursor:pointer';
+  // BACK (back to 2P menu) + CLOSE (dismiss overlay) button pair, in the two
+  // color variants used across the 2P screens.
+  function navButtons() {
+    return '<button data-a="menu" style="' + B + '">BACK</button>' +
+           '<button data-a="solo" style="' + B + ';background:#333;color:#fff">CLOSE</button>';
+  }
+  function navButtonsAlt() {
+    return '<button data-a="menu" style="' + B + ';background:#24493a;color:#fff">BACK</button>' +
+           '<button data-a="solo" style="' + B + ';background:#333;color:#fff">CLOSE</button>';
+  }
   function view(html) { $('mpBody').innerHTML = html; }
   function menu() { view('<button data-a="host" style="' + B + '">HOST A TABLE</button><button data-a="join" style="' + B + '">JOIN A TABLE</button><button data-a="solo" style="' + B + ';background:#24493a;color:#fff">CLOSE</button>'); }
   function rc() { var s = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', o = ''; for (var i = 0; i < 4; i++) o += s[Math.floor(Math.random() * s.length)]; return o; }
@@ -28,10 +38,10 @@
       var link = location.origin + location.pathname + '?join=' + code;
       view('Room code<div style="font-size:32px;letter-spacing:.2em;color:#8bd6a8">' + code + '</div>Send your friend this link or code:' +
         '<button data-a="copy" style="' + B + '">COPY INVITE LINK</button><div>Waiting for friend...</div>' +
-        '<button data-a="menu" style="' + B + ';background:#24493a;color:#fff">BACK</button><button data-a="solo" style="' + B + ';background:#333;color:#fff">CLOSE</button>');
+        '' + navButtonsAlt() + '');
       ACT.copy = function () {
         if (navigator.clipboard) navigator.clipboard.writeText(link);
-        view('Link copied! Waiting for friend...<button data-a="menu" style="' + B + ';background:#24493a;color:#fff">BACK</button><button data-a="solo" style="' + B + ';background:#333;color:#fff">CLOSE</button>');
+        view('Link copied! Waiting for friend...' + navButtonsAlt() + '');
       };
     });
     p.on('connection', function (c) {
@@ -43,12 +53,12 @@
       });
       c.on('data', onHostData); c.on('close', onClose); c.on('error', onClose);
     });
-    p.on('error', function (e) { if (e.type === 'unavailable-id') { p.destroy(); startHost(); } else view('Error: ' + e.type + '<br><button data-a="menu" style="' + B + '">BACK</button><button data-a="solo" style="' + B + ';background:#333;color:#fff">CLOSE</button>'); });
+    p.on('error', function (e) { if (e.type === 'unavailable-id') { p.destroy(); startHost(); } else view('Error: ' + e.type + '<br>' + navButtons() + ''); });
   }
   function join(code) {
     code = (code || '').trim().toUpperCase(); if (!code) return;
-    if (!window.Peer) { view('Could not load PeerJS (offline?)<br><button data-a="menu" style="' + B + '">BACK</button><button data-a="solo" style="' + B + ';background:#333;color:#fff">CLOSE</button>'); return; }
-    view('Joining ' + code + '...<br><button data-a="menu" style="' + B + '">BACK</button><button data-a="solo" style="' + B + ';background:#333;color:#fff">CLOSE</button>');
+    if (!window.Peer) { view('Could not load PeerJS (offline?)<br>' + navButtons() + ''); return; }
+    view('Joining ' + code + '...<br>' + navButtons() + '');
     if (MP.peer) { try { MP.peer.destroy(); } catch (e) {} }
     var p = MP.peer = new Peer(); MP.me = 'guest';
     p.on('open', function () {
@@ -59,11 +69,11 @@
       });
       c.on('data', onGuestData); c.on('close', onClose); c.on('error', onClose);
     });
-    p.on('error', function (e) { view((e.type === 'peer-unavailable' ? 'No table with that code' : 'Error: ' + e.type) + '<br><button data-a="join" style="' + B + '">TRY AGAIN</button><button data-a="menu" style="' + B + '">BACK</button><button data-a="solo" style="' + B + ';background:#333;color:#fff">CLOSE</button>'); });
+    p.on('error', function (e) { view((e.type === 'peer-unavailable' ? 'No table with that code' : 'Error: ' + e.type) + '<br><button data-a="join" style="' + B + '">TRY AGAIN</button>' + navButtons() + ''); });
   }
   var ACT = {
     host: startHost, menu: menu,
-    join: function () { view('Enter room code<input id="mpCode" maxlength="4" autocapitalize="characters" style="display:block;width:100%;margin:8px 0;padding:10px;font:inherit;font-size:20px;text-align:center;letter-spacing:.3em;text-transform:uppercase"><button data-a="go" style="' + B + '">JOIN</button><button data-a="menu" style="' + B + '">BACK</button><button data-a="solo" style="' + B + ';background:#333;color:#fff">CLOSE</button>'); },
+    join: function () { view('Enter room code<input id="mpCode" maxlength="4" autocapitalize="characters" style="display:block;width:100%;margin:8px 0;padding:10px;font:inherit;font-size:20px;text-align:center;letter-spacing:.3em;text-transform:uppercase"><button data-a="go" style="' + B + '">JOIN</button>' + navButtons() + ''); },
     go: function () { join($('mpCode').value); },
     solo: function () { ov.style.display = 'none'; },
     leave: function () { if (MP.conn) MP.conn.close(); if (MP.peer) { try { MP.peer.destroy(); } catch (e) {} } onClose(); ov.style.display = 'none'; }

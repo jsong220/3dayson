@@ -414,6 +414,8 @@ header {
   flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
+  cursor: pointer;
+  position: relative;
   gap: 0;
   min-height: calc(var(--cw)*1.5 + 32px);
   background: #0b1a12;
@@ -428,24 +430,19 @@ header {
   min-height: calc(var(--cw)*1.5 + 32px)
 }
 
-.captured:empty::before {
-  content: attr(data-empty);
-  color: #4c6b5a;
-  font-size: 11px;
-  letter-spacing: .14em;
-  width: 100%;
-  text-align: center
-}
-
 .captured.pi-steal-src {
-  animation: piSrcPulse .85s
+  --pulse-c: #ff8b8b;
+  --pulse-glow: #ff8b8baa;
+  animation: piPulse .85s
 }
 
 .captured.pi-steal-dst {
-  animation: piDstPulse .85s
+  --pulse-c: #8bd6a8;
+  --pulse-glow: #8bd6a8aa;
+  animation: piPulse .85s
 }
 
-@keyframes piSrcPulse {
+@keyframes piPulse {
 
   0%,
   100% {
@@ -454,22 +451,8 @@ header {
   }
 
   50% {
-    box-shadow: 0 0 0 3px #ff8b8b, 0 0 18px #ff8b8baa;
-    border-color: #ff8b8b
-  }
-}
-
-@keyframes piDstPulse {
-
-  0%,
-  100% {
-    box-shadow: none;
-    border-color: var(--line)
-  }
-
-  50% {
-    box-shadow: 0 0 0 3px #8bd6a8, 0 0 18px #8bd6a8aa;
-    border-color: #8bd6a8
+    box-shadow: 0 0 0 3px var(--pulse-c), 0 0 18px var(--pulse-glow);
+    border-color: var(--pulse-c)
   }
 }
 
@@ -494,11 +477,6 @@ header {
   background: #2b5c43;
   margin: 0 4px;
   flex: none
-}
-
-.captured {
-  cursor: pointer;
-  position: relative;
 }
 
 .captured .cap-total {
@@ -558,23 +536,6 @@ header {
   border-color: #c73a3a
 }
 
-.card.bonus {
-  border-color: #f5c542;
-  animation: bonusPulse 2.4s ease-in-out infinite
-}
-
-@keyframes bonusPulse {
-
-  0%,
-  100% {
-    box-shadow: 0 0 0 2px #f5c542aa, 0 0 12px 2px #f5c54299, 0 2px 6px #000a
-  }
-
-  50% {
-    box-shadow: 0 0 0 2px #f5c542, 0 0 22px 6px #f5c542dd, 0 2px 6px #000a
-  }
-}
-
 .card .mo {
   display: none;
   position: absolute;
@@ -592,14 +553,6 @@ header {
 
 body.labels .card .mo {
   display: block;
-}
-
-.card .art {
-  position: absolute;
-  left: 6%;
-  top: 18%;
-  width: 88%;
-  height: 52%
 }
 
 .card .tg {
@@ -641,11 +594,6 @@ body.labels .card .mo {
 
 .tg.pi2 {
   background: #c93b3b
-}
-
-.tg.pi-bonus {
-  background: linear-gradient(#f0c33c, #c48a00);
-  color: #2b1c00
 }
 
 .card .rib {
@@ -737,41 +685,26 @@ body.labels .card .mo {
   animation: dealIn .38s cubic-bezier(.2,.9,.3,1.2);
 }
 
-@keyframes capturePop {
-  0% { transform: scale(.6); opacity: 0; }
-  60% { transform: scale(1.15); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.captured .wrap.capture-anim .card {
-  animation: capturePop .35s cubic-bezier(.2,.9,.3,1.3);
-}
-
-@keyframes goCelebrate {
-  0%, 100% { transform: scale(1) rotate(0); }
-  25% { transform: scale(1.12) rotate(-2deg); }
-  50% { transform: scale(1.08) rotate(2deg); }
-  75% { transform: scale(1.15) rotate(-1deg); }
-}
-.go-celebrate {
-  animation: goCelebrate .6s ease-in-out 2;
-}
-
-/* GO banner: big 1 GO! / 2 GO! text */
-.go-banner {
+/* Banner base: big centered pop/fade text (GO / PPEOK / bonus) */
+.banner {
   position: fixed;
   top: 42%;
   left: 50%;
   transform: translate(-50%, -50%) scale(.5);
+  z-index: 2000;
+  pointer-events: none;
+  opacity: 0;
+  white-space: nowrap;
+}
+
+/* GO banner: big 1 GO! / 2 GO! text */
+.go-banner {
   font-size: clamp(56px, 14vw, 130px);
   font-weight: 900;
   letter-spacing: .04em;
   color: #f5c542;
   text-shadow: 0 4px 0 #7a5a00, 0 6px 24px #000c, 0 0 50px #f5c54299;
-  z-index: 2000;
-  pointer-events: none;
-  opacity: 0;
   animation: goBannerPop 1.6s cubic-bezier(.2,.9,.3,1.2) forwards;
-  white-space: nowrap;
 }
 @keyframes goBannerPop {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(.4) rotate(-6deg); }
@@ -783,17 +716,9 @@ body.labels .card .mo {
 
 /* PPEOK poop banner */
 .poop-banner {
-  position: fixed;
-  top: 42%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(.5);
   font-size: clamp(70px, 18vw, 160px);
-  z-index: 2000;
-  pointer-events: none;
-  opacity: 0;
   animation: poopBannerPop 1.6s cubic-bezier(.2,.9,.3,1.2) forwards;
   filter: drop-shadow(0 6px 20px #000c);
-  white-space: nowrap;
 }
 @keyframes poopBannerPop {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(-10deg); }
@@ -805,20 +730,12 @@ body.labels .card .mo {
 
 /* Bonus card banner (same pop style as GO) */
 .bonus-banner {
-  position: fixed;
-  top: 42%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(.5);
   font-size: clamp(30px, 8vw, 72px);
   font-weight: 900;
   letter-spacing: .04em;
   color: #ffe27a;
   text-shadow: 0 4px 0 #6b4e00, 0 6px 24px #000c, 0 0 50px #ffe27a99;
-  z-index: 2000;
-  pointer-events: none;
-  opacity: 0;
   animation: goBannerPop 1.6s cubic-bezier(.2,.9,.3,1.2) forwards;
-  white-space: nowrap;
 }
 
 @keyframes shakeWobble {
@@ -1116,11 +1033,6 @@ body.labels .card .mo {
 @media (prefers-reduced-motion:reduce) {
   .flash {
     animation: none
-  }
-
-  .card.bonus {
-    animation: none;
-    box-shadow: 0 0 0 2px #f5c542, 0 0 14px 3px #f5c542aa, 0 2px 6px #000a
   }
 
   .captured.pi-steal-src,

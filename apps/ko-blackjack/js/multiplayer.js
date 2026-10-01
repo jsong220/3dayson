@@ -90,6 +90,7 @@
 
   /* ---------- host: deal one round to both seats ---------- */
   function dealMP() {
+    dealSeq++; var seq = dealSeq;
     MP.hostReady = false;
     var gb = MP.guestBet; MP.guestBet = 0;
     send({t: 'dealt'}); hideMessage(); hide('betControls'); hide('postGameControls'); show('actionControls');
@@ -104,19 +105,21 @@
      function () { H[0].cards.push(drawCard()); renderTable('player-0'); },
      function () { H[1].cards.push(drawCard()); renderTable('player-1'); },
      function () { STATE.dealerCards.push(drawCard(true)); renderTable(); },
-     afterDeal].forEach(function (f, k) { setTimeout(f, 150 + k * 220); });
+     afterDeal].forEach(function (f, k) { setTimeout(function () { if (seq === dealSeq) f(); }, 150 + k * 220); });
   }
   function afterDeal() {
+    var seq = dealSeq;
     var d = STATE.dealerCards, H = STATE.playerHands, up = d[0], dBJ = up.numVal + d[1].numVal === 21;
     var nat = H.map(function (h) { return calculateHand(h.cards).sum === 21; });
     nat.forEach(function (n, i) { if (n) H[i].isStand = true; });
-    if (dBJ && (up.value === 'A' || up.numVal === 10)) { say('Dealer has Blackjack', 'text-red-400', 'Dealer has Blackjack', 'text-red-400'); setTimeout(dealerTurn, 900); return; }
+    if (dBJ && (up.value === 'A' || up.numVal === 10)) { say('Dealer has Blackjack', 'text-red-400', 'Dealer has Blackjack', 'text-red-400'); setTimeout(function () { if (seq === dealSeq) dealerTurn(); }, 900); return; }
     say(nat[0] ? 'Blackjack!' : null, 'text-yellow-400', nat[1] ? 'Blackjack!' : null, 'text-yellow-400');
     var first = H.findIndex(function (h) { return !h.isStand; });
-    if (first < 0) { setTimeout(dealerTurn, 1000); return; }
+    if (first < 0) { setTimeout(function () { if (seq === dealSeq) dealerTurn(); }, 1000); return; }
     STATE.currentHandIndex = first; STATE.isAnimating = false; renderTable(); updateControls();
   }
   function resolveMP() {                                      /* each seat scored separately; trainer stats/pot = host only */
+    var seq = dealSeq;
     var R = STATE.playerHands.map(function (h) { return evaluateHand(h, STATE.dealerCards); }), net = {host: 0, guest: 0}, pot = 0;
     R.forEach(function (r, i) {
       var h = STATE.playerHands[i]; h.result = r; net[h.owner] += r.net;
@@ -125,12 +128,13 @@
       if (STATE.carryPushes && r.key === 'push') pot += h.bet + (h.carry || 0);
     });
     STATE.stats.netEarnings += net.host; STATE.stats.handsPlayed++; STATE.pushPot = pot; updatePotUI();
-    if (net.host > 0) setTimeout(chipBurst, 150);
-    setTimeout(function () { sfx(net.host > 0 ? 'win' : net.host < 0 ? 'lose' : 'push'); }, 150);
+    if (net.host > 0) setTimeout(function () { if (seq === dealSeq) chipBurst(); }, 150);
+    setTimeout(function () { if (seq === dealSeq) sfx(net.host > 0 ? 'win' : net.host < 0 ? 'lose' : 'push'); }, 150);
     say('Round net ' + fmtMoney(net.host), netColor(net.host), 'Round net ' + fmtMoney(net.guest), netColor(net.guest));
     updateStatsUI(); if (window.saveSessionStats) saveSessionStats();
     renderTable();
     setTimeout(function () {
+      if (seq !== dealSeq) return;
       hide('actionControls'); send({t: 'end'});
       if (!MP.active) return;
       if (STATE.autoNext) startAutoNext(); else show('postGameControls');
