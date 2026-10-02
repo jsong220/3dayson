@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="build" content="3DAYSON-V3-2026-10-01">
+  <meta name="build" content="3DAYSON-V5-2026-10-01">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1a472a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -270,7 +270,8 @@
         <label class="flex justify-between items-center cursor-pointer"><span>Auto Next Hand</span><input
             type="checkbox" id="tglAuto" checked
             class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
-        <div class="border-t border-gray-700 my-2 pt-2 text-xs text-gray-500 uppercase">House Rules</div><label
+        <div class="border-t border-gray-700 my-2 pt-2 text-xs text-gray-500 uppercase">House Rules</div>
+        <p class="text-xs text-gray-500 mb-1">Most common in Washington casinos: 6 decks, H17, 3:2 blackjack, double any two cards + DAS, no surrender.</p><label
           class="flex justify-between items-center cursor-pointer"><span>Allow Insurance</span><input type="checkbox"
             id="tglIns" checked
             class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label><label
@@ -280,9 +281,17 @@
           class="flex justify-between items-center cursor-pointer"><span>Double After Split (DAS)</span><input
             type="checkbox" id="tglDAS" checked
             class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label><label
+          class="flex justify-between items-center cursor-pointer"><span>Resplit Aces</span><input type="checkbox"
+            id="tglRSA"
+            class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label><label
           class="flex justify-between items-center cursor-pointer"><span>Dealer Hits Soft 17 (H17)</span><input
             type="checkbox" id="tglH17" checked
             class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
+        <div class="flex justify-between items-center"><span>Blackjack Payout</span><select id="selBJPayout"
+            class="bg-gray-800 border border-gray-600 rounded px-2 py-1 outline-none">
+            <option value="1.5" selected>3:2</option>
+            <option value="1.2">6:5</option>
+          </select></div>
         <div class="border-t border-gray-700 my-2 pt-2 text-xs text-gray-500 uppercase">Table Look</div>
         <div class="flex justify-between items-center"><span>Felt Color</span><select id="selFelt"
             class="bg-gray-800 border border-gray-600 rounded px-2 py-1 outline-none">
@@ -335,10 +344,9 @@
           class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close reKO indexes">&times;</button>
       </div>
       <p class="text-xs text-gray-300 mb-4">When index training is enabled in settings, the app tests you on these
-        reKO plays (from the do-it-yourself charts at qfit.com/book/index.htm). reKO uses one index for every
-        play: the running count of +2. Below +2 play the base chart, which is basic strategy except for 12 vs 4, 11
-        vs A and soft 19 vs 6 (dealer hits soft 17). At +2 and above play the hands below differently. Everything not
-        listed follows basic strategy.</p>
+        reKO plays (rules from qfit.com/rekostrategy.htm). reKO uses one index for every play: the running count
+        of +2. Below +2 play basic strategy. At +2 and above play the hands below differently. Everything not listed
+        follows basic strategy.</p>
       <div id="deviationsContainer" class="flex-grow overflow-y-auto pr-2 space-y-3"></div>
     </div>
   </div>

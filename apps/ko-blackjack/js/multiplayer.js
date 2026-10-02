@@ -95,7 +95,7 @@
     MP.hostReady = false;
     var gb = MP.guestBet; MP.guestBet = 0;
     send({t: 'dealt'}); hideMessage(); hide('betControls'); hide('postGameControls'); show('actionControls');
-    var mk = function (o, b, c) { return {cards: [], bet: b, carry: c, owner: o, isBust: false, isStand: false, doubled: false, isSurrendered: false, fromSplit: false}; };
+    var mk = function (o, b, c) { return {cards: [], bet: b, carry: c, owner: o, isBust: false, isStand: false, doubled: false, isSurrendered: false, fromSplit: false, aceSplit: false}; };
     STATE.playerHands = [mk('host', STATE.currentBet, STATE.carryPushes ? STATE.pushPot : 0), mk('guest', gb, 0)];
     STATE.pushPot = 0; updatePotUI(); STATE.dealerCards = []; STATE.currentHandIndex = 0;
     STATE.isGameOver = false; STATE.isAnimating = true; STATE.insuranceNet = 0; updateControls(); renderTable();
