@@ -13,16 +13,21 @@ server.
 
 ### KO Blackjack: reKO rules
 
-The trainer follows the reKO strategy at https://www.qfit.com/rekostrategy.htm:
+The trainer follows reKO from Norman Wattenberger's *Modern Blackjack*. Where sources
+disagree the do-it-yourself charts at https://www.qfit.com/book/index.htm win.
 
 - **Count:** 2-7 are +1, 8-9 are 0, tens and aces are -1.
-- **Starting count:** 1 deck -1, 2 decks -5, 6 decks -20, 8 decks -27.
-- **Indexes:** every one is +2. Below +2 play basic strategy; at +2 and above play the
-  listed hands differently (insurance, 16/15 vs 10, 12 vs 2-4, the doubles, and the
-  surrenders). Single deck adds five more plays; 8 decks drops 12 vs 4.
-- **Bet ramps:** the dollar schedules from the page, for 1, 2, 6 and 8 decks.
-- **4 decks** is not on the page, so it uses the 6-deck plays and ramp with the standard KO
-  start of -12.
+- **Starting count:** 1 deck -1, 2 decks -5, 4 decks -12, 6 decks -20, 8 decks -27.
+- **Indexes:** every one is +2. Below +2 play the chart's base strategy; at +2 and above
+  play the starred cells differently (insurance, 15 vs 10 and 16 vs 10 when surrender is
+  off, 12 vs 2-4, the doubles, and the surrenders). A few base plays differ from plain
+  basic strategy: 12 vs 4 hits, 11 vs A hits, and soft 19 vs 6 stands when the dealer
+  hits soft 17. With surrender on, 16 vs 10 and 15 vs 10 are surrendered at every count.
+- **Deck-specific basic strategy:** the no-double-after-split pairs, soft doubles and
+  16 vs 9 follow the 6, 2 and 1 deck charts. 4 and 8 decks use the 6-deck plays.
+- **Bet ramps:** the dollar schedules from the book for 1, 2, 6 and 8 decks; 4 decks uses
+  the 6-deck ramp.
+- **Rules:** insurance pays 2:1, and the dealer peeks for blackjack under an Ace or a ten.
 
 ### KO Blackjack training tools
 
@@ -33,7 +38,7 @@ The trainer follows the reKO strategy at https://www.qfit.com/rekostrategy.htm:
   stored with the hand, dealer card, count and correct play, and ranked into
   weak spots.
 - **Weak Spots** (Settings, *Hand Focus*): deals the situations you miss most.
-- **Keyboard shortcuts**: `H` `S` `D` `P` `R` to play, `1`-`4` chips, `Space` to
+- **Keyboard shortcuts**: `H` `S` `D` `P` `R` to play, `1`-`6` chips, `Space` to
   deal / next hand, `Y` `N` for insurance, `M` mute, `?` for the full list.
 
 All of this is stored in your browser (`localStorage`); nothing is sent anywhere.
