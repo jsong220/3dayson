@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="build" content="3DAYSON-V5-2026-10-01">
+  <meta name="build" content="3DAYSON-V9-2026-10-01">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1a472a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -33,6 +33,9 @@
       <button id="btnOpenRamp"
         class="text-xs bg-emerald-800 hover:bg-emerald-700 px-2.5 py-1 rounded transition-colors text-white font-bold">Bet
         Ramp</button>
+      <button id="btnOpenDrill" title="Counting practice: cards dealt face-up, random count checks"
+        class="text-xs bg-emerald-800 hover:bg-emerald-700 px-2.5 py-1 rounded transition-colors text-white font-bold">Count
+        Drill</button>
       <button id="btnOpenStats"
         class="text-sm bg-blue-600/80 hover:bg-blue-500 px-3 py-1 rounded transition-colors flex items-center gap-2"><span>Stats</span><span
           id="sessionAccuracy" class="font-bold text-yellow-300">0 / 0</span><span id="sessionHands"
@@ -68,7 +71,7 @@
             id="currentCountDisplay">0</span>
         </div>
         <div class="my-1 text-center">
-          <div class="ko-lbl">True</div><span class="text-white text-xl sm:text-3xl font-black drop-shadow-md"
+          <div class="ko-lbl">Running</div><span class="text-white text-xl sm:text-3xl font-black drop-shadow-md"
             id="koCountDisplay">0</span>
         </div>
         <div
@@ -271,7 +274,7 @@
             type="checkbox" id="tglAuto" checked
             class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
         <div class="border-t border-gray-700 my-2 pt-2 text-xs text-gray-500 uppercase">House Rules</div>
-        <p class="text-xs text-gray-500 mb-1">Most common in Washington casinos: 6 decks, H17, 3:2 blackjack, double any two cards + DAS, no surrender.</p><label
+        <p class="text-xs text-gray-500 mb-1">The defaults are 6 decks, dealer hits soft 17, 3:2 blackjack, double after split and late surrender. Change them to match the table you play.</p><label
           class="flex justify-between items-center cursor-pointer"><span>Allow Insurance</span><input type="checkbox"
             id="tglIns" checked
             class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label><label
@@ -292,6 +295,7 @@
             <option value="1.5" selected>3:2</option>
             <option value="1.2">6:5</option>
           </select></div>
+        <p id="bjPayoutNote" class="hidden text-xs text-amber-300">6:5 costs about 1.4% more in house edge than 3:2. The reKO charts and bet ramps here do not change for it.</p>
         <div class="border-t border-gray-700 my-2 pt-2 text-xs text-gray-500 uppercase">Table Look</div>
         <div class="flex justify-between items-center"><span>Felt Color</span><select id="selFelt"
             class="bg-gray-800 border border-gray-600 rounded px-2 py-1 outline-none">
@@ -344,9 +348,10 @@
           class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close reKO indexes">&times;</button>
       </div>
       <p class="text-xs text-gray-300 mb-4">When index training is enabled in settings, the app tests you on these
-        reKO plays (rules from qfit.com/rekostrategy.htm). reKO uses one index for every play: the running count
-        of +2. Below +2 play basic strategy. At +2 and above play the hands below differently. Everything not listed
-        follows basic strategy.</p>
+        reKO plays (from the do-it-yourself charts at qfit.com/book/index.htm). reKO uses one index for every
+        play: the running count of +2. Below +2 play the base chart, which is basic strategy except for 12 vs 4, 11
+        vs A and soft 19 vs 6 (dealer hits soft 17). At +2 and above play the hands below differently. Everything not
+        listed follows basic strategy.</p>
       <div id="deviationsContainer" class="flex-grow overflow-y-auto pr-2 space-y-3"></div>
     </div>
   </div>
@@ -482,7 +487,104 @@
     </div>
   </div>
 
+  <div id="drillModal" class="fixed inset-0 modal-bg hidden z-50 flex items-center justify-center">
+    <div class="bg-gray-900 p-6 rounded-lg border border-gray-700 w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+        <h2 class="text-xl font-bold text-white">Count Drill</h2><button id="btnCloseDrill"
+          class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close count drill">&times;</button>
+      </div>
+      <div id="drillSetup">
+        <div class="grid grid-cols-3 gap-2 mb-4 text-center" aria-label="Card values">
+          <div class="bg-gray-800 rounded p-2"><div class="text-green-400 font-black text-lg">+1</div><div class="text-white text-sm">2 3 4 5 6 7</div></div>
+          <div class="bg-gray-800 rounded p-2"><div class="text-gray-300 font-black text-lg">0</div><div class="text-white text-sm">8 9</div></div>
+          <div class="bg-gray-800 rounded p-2"><div class="text-red-400 font-black text-lg">&minus;1</div><div class="text-white text-sm">10 J Q K A</div></div>
+        </div>
+        <div class="mb-1 flex justify-between items-center text-sm text-gray-300"><span>Shoe size</span><span
+            id="drillDeckCards" class="font-bold text-white"></span></div>
+        <div class="flex gap-2 mb-4" id="drillDeckPills" role="group" aria-label="Drill shoe size in decks">
+          <button type="button" data-decks="1" class="drill-pill" aria-pressed="false">1</button>
+          <button type="button" data-decks="2" class="drill-pill" aria-pressed="false">2</button>
+          <button type="button" data-decks="4" class="drill-pill" aria-pressed="false">4</button>
+          <button type="button" data-decks="6" class="drill-pill" aria-pressed="false">6</button>
+          <button type="button" data-decks="8" class="drill-pill" aria-pressed="false">8</button>
+        </div>
+        <div class="mb-1 flex justify-between items-center text-sm text-gray-300"><span>Deal pace</span><span
+            id="drillPaceLabel" class="font-bold text-white">30 sec / deck</span></div>
+        <input id="drillPace" type="range" min="20" max="40" step="1" value="30" class="w-full"
+          aria-label="Deal pace in seconds per deck">
+        <div class="flex justify-between text-xs text-gray-500"><span>20s (fast)</span><span>40s (slow)</span></div>
+        <label class="flex justify-between items-center cursor-pointer mt-4 text-sm text-gray-300"><span>Start at the shoe's starting count <b id="drillStartVal" class="text-white"></b></span><input
+            type="checkbox" id="drillStartIRC"
+            class="form-checkbox h-5 w-5 text-green-500 rounded bg-gray-800 border-gray-600"></label>
+        <button id="btnStartDrill" type="button"
+          class="mt-4 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded">Start Drill</button>
+      </div>
+      <div id="drillLive" class="hidden flex-col flex-grow min-h-0">
+        <div class="flex justify-between items-center text-sm mb-2">
+          <span class="text-gray-300"><span id="drillDealt" class="font-bold text-white">0</span> / <span
+              id="drillTotal" class="font-bold text-white">0</span> cards</span>
+          <span id="drillChecks" class="text-gray-400"></span>
+          <span id="drillProgress" class="text-gray-400"></span>
+        </div>
+        <div class="w-full bg-gray-800 rounded h-2 mb-3"><div id="drillBar" class="bg-green-500 h-2 rounded"
+            style="width:0%"></div></div>
+        <div class="drill-table">
+          <div class="drill-shoe-wrap">
+            <div class="drill-shoe"><div class="playing-card hidden-card" role="img" aria-label="Shoe"></div></div>
+            <div id="drillShoeCount" class="drill-shoe-count">0</div>
+            <div class="text-xs text-gray-400 mt-1">left in shoe</div>
+          </div>
+          <div id="drillPile" class="drill-pile" aria-live="off" aria-label="Dealt cards pile"></div>
+        </div>
+        <div class="flex gap-2 mt-3">
+          <button id="btnBackDrill" type="button"
+            class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded">Back</button>
+          <button id="btnPauseDrill" type="button"
+            class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded">Pause</button>
+          <button id="btnStopDrill" type="button"
+            class="flex-1 bg-red-800 hover:bg-red-700 text-white font-bold py-2 rounded">Stop</button>
+        </div>
+      </div>
+      <div id="drillSummary" class="hidden text-center">
+        <h3 class="text-lg font-bold text-white mb-2">Shoe complete</h3>
+        <p id="drillScore" class="text-gray-300 mb-1"></p>
+        <p id="drillFinal" class="text-sm text-gray-400 mb-4"></p>
+        <div class="flex gap-2">
+          <button id="btnDrillAgain" type="button"
+            class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded">Deal Again</button>
+          <button id="btnDrillClose2" type="button"
+            class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="drillQuizModal" class="fixed inset-0 modal-bg hidden z-60 flex items-center justify-center">
+    <div class="bg-gray-900 p-6 rounded-lg border border-green-600 w-full max-w-sm mx-4 drill-quiz-pop">
+      <h3 id="drillQuizTitle" class="text-lg font-bold text-white mb-1">Count check!</h3>
+      <p class="text-sm text-gray-300 mb-3">Dealing paused. What is the running count?</p>
+      <div id="drillQuizAsk">
+        <div class="flex gap-2 mb-3">
+          <input id="drillQuizInput" type="text" inputmode="numeric" autocomplete="off" maxlength="5"
+            class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-lg text-center outline-none"
+            aria-label="Your count answer" placeholder="0">
+          <button id="btnDrillSign" type="button" class="tr-signbtn" aria-label="Switch between plus and minus"
+            title="Plus / minus">+/&minus;</button>
+        </div>
+        <button id="btnDrillQuizSubmit" type="button"
+          class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded">Check</button>
+      </div>
+      <div id="drillQuizFeedback" class="hidden text-center">
+        <p id="drillQuizResult" class="text-lg font-bold mb-1"></p>
+        <p id="drillQuizRight" class="text-sm text-gray-400 mb-3"></p>
+        <button id="btnDrillQuizResume" type="button"
+          class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded">Resume Dealing</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/game.js" defer></script>
+  <script src="js/drill.js" defer></script>
   <script src="js/a11y.js" defer></script>
   <script src="js/trainer.js" defer></script>
   <script src="js/shortcuts.js" defer></script>

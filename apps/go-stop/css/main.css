@@ -56,7 +56,7 @@ button,
   background: #2f8f55
 }
 
-.btn.ghost {
+.btn.quiet {
   background: transparent
 }
 
@@ -402,7 +402,7 @@ header {
   z-index: 7
 }
 
-.ghost {
+.ghost:not(.btn) {
   position: fixed;
   z-index: 999;
   pointer-events: none
@@ -914,7 +914,7 @@ body.labels .card .mo {
     padding: 6px 9px
   }
 
-  .btn.ghost {
+  .btn.quiet {
     padding: 6px 9px
   }
 

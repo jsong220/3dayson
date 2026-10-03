@@ -26,8 +26,12 @@ disagree the do-it-yourself charts at https://www.qfit.com/book/index.htm win.
 - **Deck-specific basic strategy:** the no-double-after-split pairs, soft doubles and
   16 vs 9 follow the 6, 2 and 1 deck charts. 4 and 8 decks use the 6-deck plays.
 - **Bet ramps:** the dollar schedules from the book for 1, 2, 6 and 8 decks; 4 decks uses
-  the 6-deck ramp.
-- **Rules:** insurance pays 2:1, and the dealer peeks for blackjack under an Ace or a ten.
+  the 6-deck ramp. Chips are $5, $10, $20, $25, $50 and $100.
+- **House rules (Settings):** decks, penetration, dealer hits or stands on soft 17, double
+  after split, late surrender, insurance, resplit aces (off by default; split aces get one
+  card), and blackjack paying 3:2 or 6:5. Insurance pays 2:1 and the dealer peeks for
+  blackjack under an Ace or a ten. 6:5 does not change the reKO charts or ramps.
+- **Shoe running out mid-round:** the shoe is reshuffled without the cards on the table.
 
 ### KO Blackjack training tools
 
@@ -38,6 +42,12 @@ disagree the do-it-yourself charts at https://www.qfit.com/book/index.htm win.
   stored with the hand, dealer card, count and correct play, and ranked into
   weak spots.
 - **Weak Spots** (Settings, *Hand Focus*): deals the situations you miss most.
+- **Count Drill** (header button, `js/drill.js`): cards are dealt face-up from a fresh shoe
+  at 20-40 seconds per deck and the drill stops to ask for the running count at random
+  moments, once more with 3-5 cards left (random), and always after the last card so you can
+  confirm the shoe ends at the right count. The card that triggers a check stays on screen for
+  a moment before the question appears, so you are always asked about cards you have seen. The count starts at 0, or at the shoe's real starting count if you tick the box. Runs show up under Stats, then
+  *Mistakes & count checks*.
 - **Keyboard shortcuts**: `H` `S` `D` `P` `R` to play, `1`-`6` chips, `Space` to
   deal / next hand, `Y` `N` for insurance, `M` mute, `?` for the full list.
 
@@ -69,6 +79,7 @@ links out to both games.
 │           ├── game.js         # core game logic + UI
 │           ├── a11y.js         # screen-reader labels, dialog focus handling
 │           ├── trainer.js      # count checks, mistake log, weak-spot drills
+│           ├── drill.js        # count drill (face-up shoe, random count checks)
 │           ├── shortcuts.js    # keyboard shortcuts
 │           └── multiplayer.js  # PeerJS 2P networking
 ├── README.md
@@ -87,7 +98,7 @@ python3 -m http.server 8000
 ```
 
 Or just open `index.html` directly in a browser. Online multiplayer needs
-internet access for the PeerJS CDN + cloud broker.
+internet access for the PeerJS CDN + cloud broker. Blackjack room codes are 6 characters.
 
 ## Tech
 

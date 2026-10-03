@@ -144,7 +144,7 @@
 
   /* ---------- messages ---------- */
   function onHostData(m) {
-    if (m.t === 'bet' && typeof m.v === 'number' && m.v > 0) { MP.guestBet = m.v; if (MP.hostReady) dealMP(); }
+    if (m.t === 'bet' && typeof m.v === 'number' && isFinite(m.v) && m.v > 0 && m.v <= 100000) { MP.guestBet = Math.round(m.v * 100) / 100; if (MP.hostReady) dealMP(); }
     else if (m.t === 'a') guestAct(m.a);
   }
   function onGuestData(m) {
@@ -187,7 +187,7 @@
     view('<button data-a="host" style="' + B + '">HOST A TABLE</button><button data-a="join" style="' + B + '">JOIN A TABLE</button>' +
          '<button data-a="solo" style="' + B + ';background:#2a1a5e;color:#fff">CLOSE</button>');
   }
-  function rc() { var s = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', o = ''; for (var i = 0; i < 4; i++) o += s[Math.floor(Math.random() * s.length)]; return o; }
+  function rc() { var s = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', o = ''; for (var i = 0; i < 6; i++) o += s[Math.floor(Math.random() * s.length)]; return o; }
   function startHost() {
     if (!window.Peer) { view('Could not load PeerJS (offline?)<br><button data-a="menu" style="' + B + '">BACK</button><button data-a="solo" style="' + B + ';background:#2a1a5e;color:#fff">CLOSE</button>'); return; }
     if (MP.peer) { try { MP.peer.destroy(); } catch (e) {} }
@@ -231,7 +231,7 @@
   }
   var ACT = {
     host: startHost, menu: menu,
-    join: function () { view('Enter room code<input id="mpCode" maxlength="4" autocapitalize="characters" style="display:block;width:100%;margin:8px 0;padding:10px;font:inherit;font-size:20px;text-align:center;letter-spacing:.3em;text-transform:uppercase"><button data-a="go" style="' + B + '">JOIN</button><button data-a="menu" style="' + B + '">BACK</button><button data-a="solo" style="' + B + ';background:#2a1a5e;color:#fff">CLOSE</button>'); },
+    join: function () { view('Enter room code<input id="mpCode" maxlength="6" autocapitalize="characters" style="display:block;width:100%;margin:8px 0;padding:10px;font:inherit;font-size:20px;text-align:center;letter-spacing:.3em;text-transform:uppercase"><button data-a="go" style="' + B + '">JOIN</button><button data-a="menu" style="' + B + '">BACK</button><button data-a="solo" style="' + B + ';background:#2a1a5e;color:#fff">CLOSE</button>'); },
     go: function () { join($('mpCode').value); },
     solo: function () { ov.style.display = 'none'; },
     leave: function () { if (MP.conn) MP.conn.close(); if (MP.peer) { try { MP.peer.destroy(); } catch (e) {} } onClose(); ov.style.display = 'none'; }
@@ -245,6 +245,6 @@
     else menu();
   });
   /* an invite link (?join=CODE) joins straight away */
-  var q = /[?&]join=([A-Za-z0-9]{4})/.exec(location.search);
+  var q = /[?&]join=([A-Za-z0-9]{6})/.exec(location.search);
   if (q) { ov.style.display = 'flex'; join(q[1]); }
 })();

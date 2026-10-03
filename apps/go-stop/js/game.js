@@ -384,7 +384,7 @@ function showRestartModal() {
        <button class="btn" id="restartNew">NEW POT ($0)</button>
      </div>
      <p style="opacity:.7;font-size:12px;margin-top:8px">New Pot saves this pot (${cur} after ${decks} deck${decks === 1 ? '' : 's'}) to your pot history.</p>
-     <div class="row"><button class="btn ghost" id="restartCancel">CANCEL</button></div>`, true);
+     <div class="row"><button class="btn quiet" id="restartCancel">CANCEL</button></div>`, true);
   wireModalButtons({
     restartKeep: () => { closeModal(); newGame(); },
     restartNew: () => { closeModal(); startNewPot(); },
@@ -1484,7 +1484,7 @@ function openSettings() {
   </div>
   <div class="row">
     <button class="btn go" id="settingsSave">SAVE</button>
-    <button class="btn ghost" id="settingsClose">CLOSE</button>
+    <button class="btn quiet" id="settingsClose">CLOSE</button>
   </div>`, true);
   wireModalButtons({
     settingsClose: () => { sfx('click', true); closeModal(); },

@@ -8,7 +8,7 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const LS_MISTAKES = 'koTrainer.mistakes.v1', LS_SPOTS = 'koTrainer.spots.v1', LS_COUNT = 'koTrainer.countchecks.v1';
+  const LS_MISTAKES = 'koTrainer.mistakes.v1', LS_SPOTS = 'koTrainer.spots.v1', LS_COUNT = 'koTrainer.countchecks.v1', LS_DRILLS = 'koTrainer.drills.v1';
   const MAX_LOG = 200, MAX_CHECKS = 100;
   const inMP = () => !!(window.MP && window.MP.active);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -268,6 +268,19 @@
         '<button id="btnClearChecks" type="button" class="mt-3 text-xs text-gray-400 hover:text-white underline">Reset count checks</button>';
     }
     h += '</section>';
+
+    /* Count Drill runs (drill.js writes these) */
+    let runs = lsGet(LS_DRILLS, []); if (!Array.isArray(runs)) runs = [];
+    h += '<section><h3 class="' + H3 + '">Count drill</h3>';
+    if (!runs.length) h += '<p class="text-gray-400">No drill runs yet. Open Count Drill from the header.</p>';
+    else {
+      const asked = runs.reduce((a, r) => a + (r.asked | 0), 0), right = runs.reduce((a, r) => a + (r.correct | 0), 0);
+      h += '<p class="text-gray-300">' + runs.length + (runs.length === 1 ? ' run' : ' runs') + ', <b class="text-white">' + right + '/' + asked + '</b> checks right (' + pct(right, asked) + '%)</p>' +
+        '<ul class="mt-2 space-y-1">' + runs.slice(0, 6).map(r => '<li class="flex justify-between gap-3 text-xs text-gray-400"><span>' + esc(when(r.t)) + ' &middot; ' + esc(r.decks) + (r.decks === 1 ? ' deck' : ' decks') +
+          (r.irc ? ', real start' : '') + (r.finished ? '' : ', stopped early') + '</span><span class="text-gray-200 font-semibold">' + (r.correct | 0) + '/' + (r.asked | 0) + '</span></li>').join('') + '</ul>' +
+        '<button id="btnClearDrills" type="button" class="mt-3 text-xs text-gray-400 hover:text-white underline">Reset drill history</button>';
+    }
+    h += '</section>';
     $('mistakesBody').innerHTML = h;
     syncDrill();
   }
@@ -282,6 +295,7 @@
   $('mistakesBody').addEventListener('click', e => {
     const t = e.target;
     if (t.id === 'btnClearMistakes') armed(t, 'Click again to clear', () => { mistakes = []; spots = {}; lsSet(LS_MISTAKES, mistakes); lsSet(LS_SPOTS, spots); renderMistakes(); });
+    else if (t.id === 'btnClearDrills') armed(t, 'Click again to reset', () => { lsSet(LS_DRILLS, []); renderMistakes(); });
     else if (t.id === 'btnClearChecks') armed(t, 'Click again to reset', () => { cc = {asked: 0, exact: 0, close: 0, log: []}; lsSet(LS_COUNT, cc); renderMistakes(); });
   });
 
