@@ -3,21 +3,17 @@
     const MAXHANDS = 4, SUITS = ['♠', '♥', '♦', '♣'], VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
     /* reKO ("ridiculously easy KO"), per Norman Wattenberger's Modern Blackjack book (the book wins on conflicts).
        Tags: 2-7 = +1, 8-9 = 0, ten and ace = -1. Every index is the same running count, +2 (no true-count conversion):
-       below +2 you play the base strategy on the book's do-it-yourself charts (qfit.com/book/index.htm), at +2 and above you play
-       the starred cells differently. A few starred cells have a base play that differs from plain basic strategy
-       (lo): 12 vs 4 hits, 11 vs A hits, and soft 19 vs 6 stands when the dealer hits soft 17.
-       Initial running counts: 1 deck -1, 2 decks -5, 4 decks -12, 6 decks -20, 8 decks -27.
-       (The book covers 4 decks: same ramp as 6 decks.) */
+       below +2 you play plain basic strategy, at +2 and above you play the starred cells of the book's charts
+       (qfit.com/book/index.htm) differently. */
     const RC_INDEX = 2, IRC = {1: -1, 2: -5, 6: -20, 8: -27}, initialRC = d => IRC[d] ?? (4 - 4 * d);
-    /* hi = play at RC >= +2. lo = play below +2 when that differs from plain basic strategy. only / not = deck counts the play is limited to or removed from. t: H hard, S soft, P pair. */
+    /* hi = play at RC >= +2. lo (optional) = play below +2 when that should differ from basic strategy; none are used now. only / not = deck counts the play is limited to or removed from. t: H hard, S soft, P pair. */
     const REKO = [
       {play: 'Insurance', ins: true, desc: 'Take insurance at +2 and above.'},
       {play: '16 vs 10', t: 'H', sum: 16, up: 10, hi: 'Stand', desc: 'With surrender allowed, surrender at every count (the charts have no index here). Without surrender: hit below +2, stand at +2 and above.'},
       {play: '15 vs 10', t: 'H', sum: 15, up: 10, hi: 'Stand', desc: 'With surrender allowed, surrender at every count (the charts have no index here). Without surrender: hit below +2, stand at +2 and above.'},
       {play: '12 vs 2', t: 'H', sum: 12, up: 2, hi: 'Stand', desc: 'Basic strategy hits. Stand at +2 and above.'},
       {play: '12 vs 3', t: 'H', sum: 12, up: 3, hi: 'Stand', desc: 'Basic strategy hits. Stand at +2 and above.'},
-      {play: '12 vs 4', t: 'H', sum: 12, up: 4, hi: 'Stand', lo: 'Hit', desc: 'Hit below +2. Stand at +2 and above. (All games.)'},
-      {play: '11 vs A', t: 'H', sum: 11, up: 11, hi: 'Double', lo: 'Hit', desc: 'Hit below +2, even when the dealer hits soft 17. Double at +2 and above.'},
+      {play: '11 vs A', t: 'H', sum: 11, up: 11, hi: 'Double', desc: 'Basic strategy hits. Double at +2 and above. (When the dealer hits soft 17 basic strategy already doubles.)'},
       {play: '10 vs A', t: 'H', sum: 10, up: 11, hi: 'Double', desc: 'Basic strategy hits. Double at +2 and above.'},
       {play: '10 vs 10', t: 'H', sum: 10, up: 10, hi: 'Double', desc: 'Basic strategy hits. Double at +2 and above.'},
       {play: '9 vs 2', t: 'H', sum: 9, up: 2, hi: 'Double', desc: 'Basic strategy hits. Double at +2 and above.'},
@@ -25,7 +21,7 @@
       {play: '8 vs 5', t: 'H', sum: 8, up: 5, hi: 'Double', desc: 'Basic strategy hits. Double at +2 and above.'},
       {play: '8 vs 6', t: 'H', sum: 8, up: 6, hi: 'Double', desc: 'Basic strategy hits. Double at +2 and above.'},
       {play: 'A,8 vs 5', t: 'S', sum: 19, up: 5, hi: 'Double', desc: 'Basic strategy stands. Double at +2 and above.'},
-      {play: 'A,8 vs 6', t: 'S', sum: 19, up: 6, hi: 'Double', lo: 'Stand', desc: 'Stand below +2, even when the dealer hits soft 17. Double at +2 and above.'},
+      {play: 'A,8 vs 6', t: 'S', sum: 19, up: 6, hi: 'Double', desc: 'Basic strategy stands (or doubles when the dealer hits soft 17). Double at +2 and above.'},
       {play: '15 vs 9', t: 'H', sum: 15, up: 9, hi: 'Surrender', desc: 'Surrender at +2 and above. Otherwise basic strategy.'},
       {play: '15 vs A', t: 'H', sum: 15, up: 11, hi: 'Surrender', desc: 'Surrender at +2 and above. Otherwise basic strategy.'},
       {play: '14 vs 10', t: 'H', sum: 14, up: 10, hi: 'Surrender', desc: 'Surrender at +2 and above. Includes 7,7 vs 10. Otherwise basic strategy.'},

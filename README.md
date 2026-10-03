@@ -18,11 +18,10 @@ disagree the do-it-yourself charts at https://www.qfit.com/book/index.htm win.
 
 - **Count:** 2-7 are +1, 8-9 are 0, tens and aces are -1.
 - **Starting count:** 1 deck -1, 2 decks -5, 4 decks -12, 6 decks -20, 8 decks -27.
-- **Indexes:** every one is +2. Below +2 play the chart's base strategy; at +2 and above
-  play the starred cells differently (insurance, 15 vs 10 and 16 vs 10 when surrender is
-  off, 12 vs 2-4, the doubles, and the surrenders). A few base plays differ from plain
-  basic strategy: 12 vs 4 hits, 11 vs A hits, and soft 19 vs 6 stands when the dealer
-  hits soft 17. With surrender on, 16 vs 10 and 15 vs 10 are surrendered at every count.
+- **Indexes:** every one is +2. Below +2 you play plain basic strategy; at +2 and above
+  play the starred cells of the charts differently (insurance, 15 vs 10 and 16 vs 10 when
+  surrender is off, 12 vs 2-3, the doubles, and the surrenders). With surrender on, 16 vs 10
+  and 15 vs 10 are surrendered at every count.
 - **Deck-specific basic strategy:** the no-double-after-split pairs, soft doubles and
   16 vs 9 follow the 6, 2 and 1 deck charts. 4 and 8 decks use the 6-deck plays.
 - **Bet ramps:** the dollar schedules from the book for 1, 2, 6 and 8 decks; 4 decks uses
