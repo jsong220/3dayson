@@ -47,6 +47,10 @@ disagree the do-it-yourself charts at https://www.qfit.com/book/index.htm win.
   confirm the shoe ends at the right count. The card that triggers a check stays on screen for
   a moment before the question appears, so you are always asked about cards you have seen. The count starts at 0, or at the shoe's real starting count if you tick the box. Runs show up under Stats, then
   *Mistakes & count checks*.
+- **Trainer Tools** (header button, `js/pro.js`): spaced-repetition review of missed spots (1/3/7 days),
+  bet-ramp grading, accuracy heatmap, bankroll and risk-of-ruin view (from your logged hands), simulated
+  table players whose cards you must count, table noise, master volume, and backup/restore of all trainer data.
+  Count Drill levels up by 3 sec/deck when you score 80%+ on its checks.
 - **Keyboard shortcuts**: `H` `S` `D` `P` `R` to play, `1`-`6` chips, `Space` to
   deal / next hand, `Y` `N` for insurance, `M` mute, `?` for the full list.
 
@@ -80,6 +84,7 @@ links out to both games.
 │           ├── trainer.js      # count checks, mistake log, weak-spot drills
 │           ├── drill.js        # count drill (face-up shoe, random count checks)
 │           ├── shortcuts.js    # keyboard shortcuts
+│           ├── pro.js          # trainer tools (review, bets, heatmap, bankroll, bots, backup)
 │           └── multiplayer.js  # PeerJS 2P networking
 ├── README.md
 └── SECURITY.md
