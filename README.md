@@ -13,9 +13,6 @@ server.
 
 ### KO Blackjack: reKO rules
 
-The trainer follows reKO from Norman Wattenberger's *Modern Blackjack*. Where sources
-disagree the do-it-yourself charts at https://www.qfit.com/book/index.htm win.
-
 - **Count:** 2-7 are +1, 8-9 are 0, tens and aces are -1.
 - **Starting count:** 1 deck -1, 2 decks -5, 4 decks -12, 6 decks -20, 8 decks -27.
 - **Indexes:** every one is +2. Below +2 you play plain basic strategy; at +2 and above
