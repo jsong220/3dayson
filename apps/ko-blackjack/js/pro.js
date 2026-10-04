@@ -10,7 +10,7 @@
   const rd = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
   const wr = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
   const K = {pro: 'koTrainer.pro.v1', bets: 'koTrainer.bets.v1', rounds: 'koTrainer.rounds.v1', srs: 'koTrainer.srs.v1', spots: 'koTrainer.spots.v1', level: 'koTrainer.drilllevel.v1'};
-  const P = Object.assign({vol: 0.8, bots: false, seats: 2, noise: false}, rd(K.pro, {}));
+  const P = Object.assign({vol: 0.8, bots: false, seats: 2, noise: false, skill: 'perfect'}, rd(K.pro, {}));
   const saveP = () => wr(K.pro, P);
   let bets = rd(K.bets, []), rounds = rd(K.rounds, []), srs = rd(K.srs, {}), lvl = rd(K.level, {});
 
@@ -144,7 +144,7 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
     '</div><div class="card-pip flex-grow flex items-center justify-center">' + c.suit + '</div><div class="leading-none text-left rotate-180">' + c.value + '</div></div>';
   /* Seats sit on both sides of you along the near edge of the table (dealer stays across); outer seats curve toward the dealer.
      The seat shells are built once per round, then cards are appended one by one so each new card plays the real deal animation. */
-  const seatNo = i => i < Math.ceil(botHands.length / 2) ? i + 1 : i + 2; /* seats numbered left to right; your seat is in the middle */
+  const seatNo = i => i < Math.ceil(botHands.length / 2) ? i + 1 : i + 1 + (inMP() ? 2 : 1); /* seats numbered left to right; human seat(s) in the middle */
   function botBuild() {
     const n = botHands.length, L = Math.ceil(n / 2), seat = (h, i, rank) => { const d = document.createElement('div'); d.className = 'bot-seat'; d.style.setProperty('--lift', rank * 28 + 'px');
       d.innerHTML = '<b>Player ' + seatNo(i) + '</b><div class="bot-hands"></div><div class="bot-results"></div>'; h.el = d; return d; };
@@ -166,10 +166,30 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
       });
       const allBust = hs.every(x => x.bust), tag = allBust ? 'bust' : hs.length > 1 ? 'split' : hs[0].surr ? 'surrender' : hs[0].doubled ? 'double' : '';
       h.bust = allBust; h.el.firstChild.textContent = 'Player ' + seatNo(i) + (tag ? ' \u00b7 ' + tag : '');
-      h.el.classList.toggle('bot-bust', allBust);
+      h.el.classList.toggle('bot-bust', allBust); h.el.classList.toggle('bot-active', !!h.active);
+      const rb = h.el.querySelector('.bot-results'), chips = (h.ins ? ['<span class="bot-res ' + (h.insRes || 'push') + '">' + (h.insRes === 'win' ? 'INS +' : h.insRes === 'lose' ? 'INS \u2212' : 'INSURED') + '</span>'] : [])
+        .concat((h.res || []).map(r => '<span class="bot-res ' + r.k + '">' + r.w + '</span>')).join('');
+      if (rb && rb.dataset.s !== chips) { rb.innerHTML = chips; rb.dataset.s = chips; }
+      h.el.classList.toggle('bot-won', !!(h.res && h.res.some(r => r.k === 'win') && !h.res.some(r => r.k === 'lose')));
     });
     fitBots();
+    if (inMP() && window.MP.me === 'host' && window.MP.send) window.MP.send({t: 'b', b: botSnap()});   /* the friend's screen mirrors the bots */
   }
+  const botSnap = () => botHands.map(h => ({hs: botHs(h).map(x => ({cards: x.cards, bust: !!x.bust, doubled: !!x.doubled, surr: !!x.surr})), ins: h.ins || 0, insRes: h.insRes || '', res: h.res || null, active: !!h.active}));
+  function botClear() { botSeq++; botHands = []; leftGo = false; botBox.innerHTML = ''; botBox.classList.remove('sweeping'); botBox.style.bottom = ''; }
+  /* public hooks used by the 2-player table (multiplayer.js) */
+  window.ProBots = {
+    start: () => { botClear(); if (!P.bots || STATE.deck.length <= 30 + P.seats * 8) return null; botHands = Array.from({length: P.seats}, () => ({cards: [], bust: false})); return {n: P.seats, L: Math.ceil(P.seats / 2)}; },
+    deal: i => { if (botHands[i]) { botDraw(botHands[i]); botHtml(); } },
+    results: () => { if (botHands.length) botResults(); },
+    clear: botClear,
+    apply: snap => {
+      if (!snap || !snap.length) return botClear();
+      if (botHands.length !== snap.length) { botHands = snap.map(() => ({cards: []})); botBox.innerHTML = ''; }
+      snap.forEach((sn, i) => { const h = botHands[i]; h.hs = sn.hs.map(x => Object.assign({}, x)); h.cards = h.hs[0].cards; h.ins = sn.ins; h.insRes = sn.insRes; h.res = sn.res; h.active = sn.active; });
+      botHtml();
+    }
+  };
   function botTotal(cs) { let s = 0, a = 0; cs.forEach(c => { s += c.numVal; if (c.value === 'A') a++; }); while (s > 21 && a) { s -= 10; a--; } return {s, soft: a > 0}; }
   function botDraw(h) { const c = STATE.deck.pop(); if (!c) return; h.cards.push(c); updateCount(c.countVal); sfx('deal'); }
   /* Deal order like a real table: one card to every seat left to right (your seat sits in the middle, the dealer is last), then a second lap. */
@@ -202,7 +222,18 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
   /* Bots play perfect basic strategy for the table's current rules (decks, H17/S17, DAS, surrender, resplit aces),
      using the same chart the trainer grades you against. They don't count, so no count deviations. */
   function botAction(seat, x, up) {
-    if (botTotal(x.cards).s >= 21) return 'Stand';
+    const tt = botTotal(x.cards);
+    if (tt.s >= 21) return 'Stand';
+    if (P.skill === 'casual') return (tt.s >= 17 || (tt.s >= 12 && up <= 6 && !tt.soft) || x.cards.length > 5) ? 'Stand' : 'Hit';   /* casual: stand on 17+, or 12+ vs a dealer 2-6 */
+    const a = botPerfect(seat, x, up);
+    if (P.skill !== 'mixed' || Math.random() >= .18) return a;                     /* mixed: about 1 in 5 decisions is a human-style slip */
+    if (a === 'Stand') return tt.s >= 12 && tt.s <= 16 ? 'Hit' : a;
+    if (a === 'Hit') return tt.s >= 12 ? 'Stand' : a;
+    if (a === 'Double' || a === 'Surrender') return 'Hit';
+    if (a === 'Split') return tt.s >= 17 ? 'Stand' : 'Hit';
+    return a;
+  }
+  function botPerfect(seat, x, up) {
     const keep = {dev: STATE.enableDeviations, ph: STATE.playerHands, note: STATE.devNote};
     try { STATE.enableDeviations = false; STATE.playerHands = new Array(botHs(seat).length); return getCorrectAction(x, {numVal: up}); }
     finally { STATE.enableDeviations = keep.dev; STATE.playerHands = keep.ph; STATE.devNote = keep.note; }
@@ -224,7 +255,7 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
   function botDraw1(x) { const c = STATE.deck.pop(); if (!c) return; x.cards.push(c); updateCount(c.countVal); sfx('deal'); }
   /* Play order follows the deal: seats left of you play first, then you, then seats right of you, then the dealer. */
   function botRun(from, to, seq, then) {
-    const up = (STATE.dealerCards.find(c => !c.hidden) || {numVal: 10}).numVal, mark = h => botHands.forEach(x => x.el && x.el.classList.toggle('bot-active', x === h));
+    const up = (STATE.dealerCards.find(c => !c.hidden) || {numVal: 10}).numVal, mark = h => { botHands.forEach(x => { x.active = x === h; }); botHtml(); };
     const go = () => {
       if (seq !== botSeq) return;
       const h = botHands.slice(from, to).find(x => !seatDone(x));
@@ -240,10 +271,10 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
     oUC.apply(this, arguments);
     if (leftGo || !botHands.length || STATE.isGameOver || STATE.isAnimating) return;
     const h0 = STATE.playerHands[0];
-    if (!h0 || h0.cards.length < 2 || STATE.dealerCards.length < 2 || STATE.currentHandIndex !== 0 || !botHands.every(h => h.cards.length >= 2)) return;
+    if (!h0 || !STATE.playerHands.every(h => h.cards.length >= 2) || STATE.dealerCards.length < 2 || !botHands.every(h => h.cards.length >= 2)) return;
     if (!$('insuranceModal').classList.contains('hidden')) return;
     leftGo = true; STATE.isAnimating = true; updateControls();   /* lock your buttons while the seats to your left play */
-    botRun(0, Math.ceil(botHands.length / 2), botSeq, () => { STATE.isAnimating = false; updateControls(); });
+    botRun(0, Math.ceil(botHands.length / 2), botSeq, () => { STATE.isAnimating = false; updateControls(); if (inMP()) renderTable(); });
   };
   const oDT = window.dealerTurn;
   window.dealerTurn = function () {
@@ -276,8 +307,8 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
   function botResults() {
     const d = STATE.dealerCards, dS = botTotal(d).s, dBJ = d.length === 2 && dS === 21;
     botHands.forEach(h => {
-      const hs = botHs(h), box = h.el && h.el.querySelector('.bot-results'); if (!box) return;
-      box.innerHTML = hs.map(x => {
+      h.active = false;
+      h.res = botHs(h).map(x => {
         const t = botTotal(x.cards).s, nat = x.cards.length === 2 && !x.fromSplit && t === 21;
         let k, w;
         if (x.surr) [k, w] = ['push', 'SURRENDER'];
@@ -288,12 +319,20 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
         else if (dS > 21 || t > dS) [k, w] = ['win', 'WIN'];
         else if (t < dS) [k, w] = ['lose', 'LOSE'];
         else [k, w] = ['push', 'PUSH'];
-        return '<span class="bot-res ' + k + '">' + w + (x.doubled ? ' 2x' : '') + '</span>';
-      }).join('');
-      h.el.classList.toggle('bot-won', [...box.children].some(e => e.classList.contains('win')) && ![...box.children].some(e => e.classList.contains('lose')));
+        return {k, w: w + (x.doubled ? ' 2x' : '')};
+      });
+      if (h.ins) h.insRes = dBJ ? 'win' : 'lose';
     });
-    fitBots();
+    botHtml();
   }
+  /* Insurance: perfect bots always decline (it's a losing bet without the count); casual and mixed bots sometimes take it. */
+  function botInsure() {
+    const pr = P.skill === 'casual' ? .35 : P.skill === 'mixed' ? .12 : 0;
+    botHands.forEach(h => { h.ins = Math.random() < pr ? 1 : 0; });
+    if (botHands.some(h => h.ins)) botHtml();
+  }
+  const oCI = window.checkInsurance;
+  window.checkInsurance = function () { const r = oCI.apply(this, arguments); if (r && botHands.length) botInsure(); return r; };
   const oRG2 = window.resolveGame;
   window.resolveGame = function () { const x = oRG2.apply(this, arguments); if (botHands.length) botResults(); return x; };
   const oReset = window.resetBoard;
@@ -372,7 +411,9 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
     } else if (tab === 'Table') {
       B.innerHTML = '<div class="pro-row"><span>Simulated players at your table (their cards count too)</span><button class="pro-btn ' + (P.bots ? 'on' : '') + '" id="pBots">' + (P.bots ? 'On' : 'Off') + '</button></div>' +
         '<div class="pro-row"><span>Seats (1-4)</span><input id="pSeats" type="range" min="1" max="4" value="' + P.seats + '"><b>' + P.seats + '</b></div>' +
-        '<div class="pro-row"><span>Table noise and chip clinks</span><button class="pro-btn ' + (P.noise ? 'on' : '') + '" id="pNoise">' + (P.noise ? 'On' : 'Off') + '</button></div><p style="color:#9ca3af;font-size:12px">Not used in 2P. Bots hit to 17, or stand on 12+ against a dealer 2-6, like a casual player.</p>';
+        '<div class="pro-row"><span>Bot skill</span><span>' + [['perfect', 'Perfect'], ['mixed', 'Mixed'], ['casual', 'Casual']].map(k => '<button class="pro-btn ' + (P.skill === k[0] ? 'on' : '') + '" data-skill="' + k[0] + '">' + k[1] + '</button>').join(' ') + '</span></div>' +
+        '<div class="pro-row"><span>Table noise and chip clinks</span><button class="pro-btn ' + (P.noise ? 'on' : '') + '" id="pNoise">' + (P.noise ? 'On' : 'Off') + '</button></div><p style="color:#9ca3af;font-size:12px"><b>Perfect</b>: basic strategy every time (double, split, surrender, declines insurance). <b>Mixed</b>: perfect, but about 1 in 5 decisions is a slip, and some take insurance. <b>Casual</b>: stands on 17+ or 12+ vs a dealer 2-6, never doubles or splits, often insures. In 2P the bots sit on both sides of the two of you and your friend sees them too.</p>';
+      B.querySelectorAll('[data-skill]').forEach(b => { b.onclick = () => { P.skill = b.dataset.skill; saveP(); view(); }; });
       $('pBots').onclick = () => { P.bots = !P.bots; saveP(); view(); };
       $('pSeats').oninput = e => { P.seats = +e.target.value; saveP(); e.target.nextSibling.textContent = P.seats; };
       $('pNoise').onclick = () => { P.noise = !P.noise; saveP(); noiseLoop(); view(); };

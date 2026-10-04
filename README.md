@@ -114,3 +114,8 @@ internet access for the PeerJS CDN + cloud broker. Blackjack room codes are 6 ch
 
 History lives in git — use tags (e.g. `v1`, `v2`) for release snapshots
 instead of versioned zip filenames.
+
+## KO Blackjack: simulated players and tests
+
+- Tools → Table: turn on simulated players, pick 1-4 seats and a skill (Perfect, Mixed, Casual). They sit on both sides of you (and of your friend in 2P), are dealt and play in table order from the left, and get WIN / LOSE / PUSH tags after the round.
+- `node apps/ko-blackjack/tests/strategy-sim.js [hands]` plays millions of hands with the trainer's strategy chart and checks the house edge is in the expected range (about 0.4-0.6% for 6 decks).

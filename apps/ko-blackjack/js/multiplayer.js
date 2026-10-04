@@ -7,6 +7,7 @@
   var isHost = function () { return MP.active && MP.me === 'host'; };
   var isGuest = function () { return MP.active && MP.me === 'guest'; };
   var send = function (m) { if (MP.conn && MP.conn.open) MP.conn.send(m); };
+  MP.send = send;                                             /* pro.js uses this to mirror the simulated players to the friend */
   var hide = function (id) { $(id).classList.add('hidden'); }, show = function (id) { $(id).classList.remove('hidden'); };
   var ORIG = {Hit: window.hit, Stand: window.stand, Double: window.double, Split: window.split, Surrender: window.surrender};
   var BTN = {btnHit: 'Hit', btnStand: 'Stand', btnDouble: 'Double', btnSplit: 'Split', btnSurrender: 'Surrender'};
@@ -99,14 +100,18 @@
     STATE.playerHands = [mk('host', STATE.currentBet, STATE.carryPushes ? STATE.pushPot : 0), mk('guest', gb, 0)];
     STATE.pushPot = 0; updatePotUI(); STATE.dealerCards = []; STATE.currentHandIndex = 0;
     STATE.isGameOver = false; STATE.isAnimating = true; STATE.insuranceNet = 0; updateControls(); renderTable();
-    var H = STATE.playerHands;
-    [function () { H[0].cards.push(drawCard()); renderTable('player-0'); },
-     function () { H[1].cards.push(drawCard()); renderTable('player-1'); },
-     function () { STATE.dealerCards.push(drawCard()); renderTable('dealer'); },
-     function () { H[0].cards.push(drawCard()); renderTable('player-0'); },
-     function () { H[1].cards.push(drawCard()); renderTable('player-1'); },
-     function () { STATE.dealerCards.push(drawCard(true)); renderTable(); },
-     afterDeal].forEach(function (f, k) { setTimeout(function () { if (seq === dealSeq) f(); }, 150 + k * 220); });
+    var H = STATE.playerHands, PB = window.ProBots && ProBots.start();      /* PB is null when the simulated players are off */
+    var n = PB ? PB.n : 0, L = PB ? PB.L : 0, seq0 = [];
+    var bot = function (i) { return function () { ProBots.deal(i); }; };
+    var human = function (k) { return function () { H[k].cards.push(drawCard()); renderTable('player-' + k); }; };
+    for (var lap = 0; lap < 2; lap++) {                      /* real table order, one lap per card: seats left of you, host, friend, seats right of you, dealer */
+      for (var i = 0; i < L; i++) seq0.push(bot(i));
+      seq0.push(human(0), human(1));
+      for (var j = L; j < n; j++) seq0.push(bot(j));
+      seq0.push(lap ? function () { STATE.dealerCards.push(drawCard(true)); renderTable(); } : function () { STATE.dealerCards.push(drawCard()); renderTable('dealer'); });
+    }
+    seq0.push(afterDeal);
+    seq0.forEach(function (f, k) { setTimeout(function () { if (seq === dealSeq) f(); }, 150 + k * 220); });
   }
   function afterDeal() {
     var seq = dealSeq;
@@ -121,6 +126,7 @@
   }
   function resolveMP() {                                      /* each seat scored separately; trainer stats/pot = host only */
     var seq = dealSeq;
+    if (window.ProBots) ProBots.results();                    /* WIN / LOSE tags on the simulated players */
     var R = STATE.playerHands.map(function (h) { return evaluateHand(h, STATE.dealerCards); }), net = {host: 0, guest: 0}, pot = 0;
     R.forEach(function (r, i) {
       var h = STATE.playerHands[i]; h.result = r; net[h.owner] += r.net;
@@ -152,7 +158,9 @@
       STATE.dealerCards = m.d; STATE.playerHands = m.p; STATE.currentHandIndex = m.i; STATE.isGameOver = m.over;
       STATE.isAnimating = m.anim; STATE.koCount = m.ko; STATE.deck = new Array(m.dl).fill(null);
       updateTrackerUI(); renderTable(m.tgt); updateControls();
+    } else if (m.t === 'b') { if (window.ProBots) ProBots.apply(m.b);
     } else if (m.t === 'bet') {
+      if (window.ProBots) ProBots.clear();
       STATE.playerHands = []; STATE.dealerCards = []; STATE.isGameOver = true; STATE.isAnimating = false;
       $('dealerValue').classList.add('hidden'); $('playerHandsContainer').innerHTML = ''; $('dealerHand').innerHTML = '';
       hide('actionControls'); hide('postGameControls'); show('betControls');
