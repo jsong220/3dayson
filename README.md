@@ -117,5 +117,6 @@ instead of versioned zip filenames.
 
 ## KO Blackjack: simulated players and tests
 
-- Tools → Table: turn on simulated players, pick 1-4 seats and a skill (Perfect, Mixed, Casual). They sit on both sides of you (and of your friend in 2P), are dealt and play in table order from the left, and get WIN / LOSE / PUSH tags after the round.
+- Tools → Table: turn on simulated players, pick 1-4 seats, a speed (Slow, Normal, Fast, Instant) and a skill (Perfect, Mixed, Casual) for all seats or per seat. Each bot seat is read out by screen readers as one sentence, and a live log announces what the bots do. They sit on both sides of you (and of your friend in 2P), are dealt and play in table order from the left, and get WIN / LOSE / PUSH tags after the round.
 - `node apps/ko-blackjack/tests/strategy-sim.js [hands]` plays millions of hands with the trainer's strategy chart and checks the house edge is in the expected range (about 0.4-0.6% for 6 decks).
+- `python3 apps/ko-blackjack/tests/table-browser.py` runs the browser tests (needs `pip install playwright` and `playwright install chromium`): deal and play order, no overlap after a split, dealer peek, insurance, per-seat skills, speed setting, the 2P mirror and screen-reader labels. Pass test names to run only some, e.g. `... table-browser.py order peek`.

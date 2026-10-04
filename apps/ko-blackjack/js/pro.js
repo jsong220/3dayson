@@ -10,7 +10,11 @@
   const rd = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
   const wr = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
   const K = {pro: 'koTrainer.pro.v1', bets: 'koTrainer.bets.v1', rounds: 'koTrainer.rounds.v1', srs: 'koTrainer.srs.v1', spots: 'koTrainer.spots.v1', level: 'koTrainer.drilllevel.v1'};
-  const P = Object.assign({vol: 0.8, bots: false, seats: 2, noise: false, skill: 'perfect'}, rd(K.pro, {}));
+  const P = Object.assign({vol: 0.8, bots: false, seats: 2, noise: false, skill: 'perfect', pace: 'normal'}, rd(K.pro, {}));
+  const SKILLS = ['perfect', 'mixed', 'casual'], PACE = {slow: [1000, 600, 300], normal: [600, 350, 230], fast: [220, 120, 130], instant: [0, 0, 60]};   /* [between bot actions, before the first, deal step] in ms */
+  if (!Array.isArray(P.skills)) P.skills = [P.skill, P.skill, P.skill, P.skill];
+  P.skills = [0, 1, 2, 3].map(i => SKILLS.includes(P.skills[i]) ? P.skills[i] : 'perfect'); if (!PACE[P.pace]) P.pace = 'normal';
+  const pace = () => PACE[P.pace];
   const saveP = () => wr(K.pro, P);
   let bets = rd(K.bets, []), rounds = rd(K.rounds, []), srs = rd(K.srs, {}), lvl = rd(K.level, {});
 
@@ -151,6 +155,12 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
     botBox.innerHTML = '<div class="bot-side l"></div><div class="bot-gap"></div><div class="bot-side r"></div>';
     botHands.forEach((h, i) => botBox.children[i < L ? 0 : 2].appendChild(seat(h, i, i < L ? L - 1 - i : i - L)));
   }
+  const RANKN = {A: 'Ace', K: 'King', Q: 'Queen', J: 'Jack'}, SUITN = {'\u2660': 'spades', '\u2665': 'hearts', '\u2666': 'diamonds', '\u2663': 'clubs'};
+  const cardName = c => (RANKN[c.value] || c.value) + ' of ' + (SUITN[c.suit] || '');
+  const live = document.createElement('div'); live.id = 'botLive'; live.setAttribute('role', 'log'); live.setAttribute('aria-live', 'polite'); live.setAttribute('aria-relevant', 'additions');
+  live.style.cssText = 'position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap'; document.body.appendChild(live);
+  function say(t) { const d = document.createElement('div'); d.textContent = t; live.appendChild(d); while (live.children.length > 8) live.removeChild(live.firstChild); }
+  const who = h => 'Player ' + seatNo(botHands.indexOf(h));
   const botHs = h => h.hs || (h.hs = [{cards: h.cards}]);          /* a seat can hold several hands after a split; hand 0 shares h.cards */
   const seatDone = h => botHs(h).every(x => x.done);
   function botHtml() {
@@ -160,10 +170,18 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
       const hs = botHs(h), wrap = h.el.querySelector('.bot-hands');
       hs.forEach((x, k) => {
         let box = wrap.children[k]; if (!box) { box = document.createElement('div'); box.className = 'bot-cards'; wrap.appendChild(box); }
-        let have = box.children.length, fresh = true; if (have > x.cards.length) { box.innerHTML = ''; have = 0; fresh = false; }
-        if (x.cards.length > have) box.insertAdjacentHTML('beforeend', x.cards.slice(have).map(c => faceHtml(c, fresh)).join(''));
+        /* draw only what changed: append new cards, but if a card was swapped out (a split moves one away) rebuild this hand */
+        const keys = x.cards.map(c => c.value + c.suit), old = (box.dataset.k || '').split('|').filter(Boolean);
+        let m = 0; while (m < old.length && m < keys.length && old[m] === keys[m]) m++;
+        if (m < old.length) { box.innerHTML = ''; box.insertAdjacentHTML('beforeend', x.cards.slice(0, m).map(c => faceHtml(c, false)).join('')); }
+        if (keys.length > (m < old.length ? m : old.length)) box.insertAdjacentHTML('beforeend', x.cards.slice(m < old.length ? m : old.length).map(c => faceHtml(c, true)).join(''));
+        box.dataset.k = keys.join('|');
         box.classList.toggle('hand-bust', !!x.bust);
       });
+      h.el.setAttribute('role', 'img');                      /* screen readers get one sentence per seat instead of loose cards */
+      h.el.setAttribute('aria-label', 'Player ' + seatNo(i) + '. ' + hs.map((x, k) => { const t = botTotal(x.cards);
+        return (hs.length > 1 ? 'Hand ' + (k + 1) + ': ' : '') + x.cards.map(cardName).join(', ') + ', total ' + (t.soft && t.s <= 21 ? 'soft ' : '') + t.s + (x.bust ? ', bust' : x.surr ? ', surrendered' : x.doubled ? ', doubled' : ''); }).join('. ')
+        + (h.ins ? '. Took insurance' + (h.insRes ? (h.insRes === 'win' ? ', insurance won' : ', insurance lost') : '') : '') + (h.res ? '. Result: ' + h.res.map(r => r.w.toLowerCase()).join(', ') : ''));
       const allBust = hs.every(x => x.bust), tag = allBust ? 'bust' : hs.length > 1 ? 'split' : hs[0].surr ? 'surrender' : hs[0].doubled ? 'double' : '';
       h.bust = allBust; h.el.firstChild.textContent = 'Player ' + seatNo(i) + (tag ? ' \u00b7 ' + tag : '');
       h.el.classList.toggle('bot-bust', allBust); h.el.classList.toggle('bot-active', !!h.active);
@@ -179,10 +197,11 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
   function botClear() { botSeq++; botHands = []; leftGo = false; botBox.innerHTML = ''; botBox.classList.remove('sweeping'); botBox.style.bottom = ''; }
   /* public hooks used by the 2-player table (multiplayer.js) */
   window.ProBots = {
-    start: () => { botClear(); if (!P.bots || STATE.deck.length <= 30 + P.seats * 8) return null; botHands = Array.from({length: P.seats}, () => ({cards: [], bust: false})); return {n: P.seats, L: Math.ceil(P.seats / 2)}; },
+    start: () => { botClear(); if (!P.bots || STATE.deck.length <= 30 + P.seats * 8) return null; botHands = Array.from({length: P.seats}, (_, i) => ({cards: [], bust: false, skill: P.skills[i]})); return {n: P.seats, L: Math.ceil(P.seats / 2), step: pace()[2]}; },
     deal: i => { if (botHands[i]) { botDraw(botHands[i]); botHtml(); } },
     results: () => { if (botHands.length) botResults(); },
     clear: botClear,
+    step: () => pace()[2],
     apply: snap => {
       if (!snap || !snap.length) return botClear();
       if (botHands.length !== snap.length) { botHands = snap.map(() => ({cards: []})); botBox.innerHTML = ''; }
@@ -199,7 +218,7 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
   window.dealHandInner = function () {
     botHands = []; leftGo = false; botBox.innerHTML = ''; botBox.classList.remove('sweeping'); botSeq++;
     if (P.bots && !inMP() && STATE.deck.length > 30 + P.seats * 8) {
-      const n = P.seats, L = Math.ceil(n / 2), STEP = 230, t = {p1: 0, d1: 0, p2: 0, d2: 0}, bt = Array.from({length: n}, () => []);
+      const n = P.seats, L = Math.ceil(n / 2), STEP = pace()[2], t = {p1: 0, d1: 0, p2: 0, d2: 0}, bt = Array.from({length: n}, () => []);
       let k = 0;
       for (let lap = 0; lap < 2; lap++) {
         const at = () => 120 + (k++) * STEP;
@@ -208,7 +227,7 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
         for (let i = L; i < n; i++) bt[i][lap] = at();
         t[lap ? 'd2' : 'd1'] = at();
       }
-      botHands = Array.from({length: n}, () => ({cards: [], bust: false})); plan = {t, bt};
+      botHands = Array.from({length: n}, (_, i) => ({cards: [], bust: false, skill: P.skills[i]})); plan = {t, bt};
     }
     const mine = plan, r = oInner.apply(this, arguments); plan = null;
     if (mine) {
@@ -224,9 +243,10 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
   function botAction(seat, x, up) {
     const tt = botTotal(x.cards);
     if (tt.s >= 21) return 'Stand';
-    if (P.skill === 'casual') return (tt.s >= 17 || (tt.s >= 12 && up <= 6 && !tt.soft) || x.cards.length > 5) ? 'Stand' : 'Hit';   /* casual: stand on 17+, or 12+ vs a dealer 2-6 */
+    const sk = seat.skill || P.skill;
+    if (sk === 'casual') return (tt.s >= 17 || (tt.s >= 12 && up <= 6 && !tt.soft) || x.cards.length > 5) ? 'Stand' : 'Hit';   /* casual: stand on 17+, or 12+ vs a dealer 2-6 */
     const a = botPerfect(seat, x, up);
-    if (P.skill !== 'mixed' || Math.random() >= .18) return a;                     /* mixed: about 1 in 5 decisions is a human-style slip */
+    if (sk !== 'mixed' || Math.random() >= .18) return a;                     /* mixed: about 1 in 5 decisions is a human-style slip */
     if (a === 'Stand') return tt.s >= 12 && tt.s <= 16 ? 'Hit' : a;
     if (a === 'Hit') return tt.s >= 12 ? 'Stand' : a;
     if (a === 'Double' || a === 'Surrender') return 'Hit';
@@ -240,6 +260,7 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
   }
   function botStep(seat, up) {
     const hs = botHs(seat), x = hs.find(y => !y.done), act = botAction(seat, x, up);
+    const nm = who(seat), had = x.cards.length;
     if (act === 'Hit') botDraw1(x);
     else if (act === 'Double') { x.doubled = true; botDraw1(x); x.done = true; }
     else if (act === 'Split') {
@@ -251,6 +272,10 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
     else if (act === 'Surrender') { x.surr = true; x.done = true; }
     else x.done = true;                                            /* Stand */
     for (const y of hs) if (botTotal(y.cards).s > 21) { y.bust = true; y.done = true; }
+    const last = x.cards[x.cards.length - 1], tot = botTotal(x.cards).s;
+    say(act === 'Stand' ? nm + ' stands on ' + tot : act === 'Surrender' ? nm + ' surrenders'
+      : act === 'Split' ? nm + ' splits ' + (RANKN[x.cards[0].value] || x.cards[0].value) + 's'
+      : nm + (act === 'Double' ? ' doubles and draws ' : ' hits and draws ') + cardName(last) + ', total ' + tot + (x.bust ? ', bust' : ''));
   }
   function botDraw1(x) { const c = STATE.deck.pop(); if (!c) return; x.cards.push(c); updateCount(c.countVal); sfx('deal'); }
   /* Play order follows the deal: seats left of you play first, then you, then seats right of you, then the dealer. */
@@ -262,9 +287,9 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
       mark(h);
       if (!h) return then();
       botStep(h, up); h.done = seatDone(h);
-      botHtml(); setTimeout(go, 600);
+      botHtml(); setTimeout(go, pace()[0]);
     };
-    setTimeout(go, 350);
+    setTimeout(go, pace()[1]);
   }
   const oUC = window.updateControls;
   window.updateControls = function () {
@@ -324,11 +349,11 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
       if (h.ins) h.insRes = dBJ ? 'win' : 'lose';
     });
     botHtml();
+    say('Table results. ' + botHands.map(h => who(h) + ': ' + (h.res || []).map(r => r.w.toLowerCase()).join(', ')).join('. '));
   }
   /* Insurance: perfect bots always decline (it's a losing bet without the count); casual and mixed bots sometimes take it. */
   function botInsure() {
-    const pr = P.skill === 'casual' ? .35 : P.skill === 'mixed' ? .12 : 0;
-    botHands.forEach(h => { h.ins = Math.random() < pr ? 1 : 0; });
+    botHands.forEach(h => { const sk = h.skill || P.skill; h.ins = Math.random() < (sk === 'casual' ? .35 : sk === 'mixed' ? .12 : 0) ? 1 : 0; });
     if (botHands.some(h => h.ins)) botHtml();
   }
   const oCI = window.checkInsurance;
@@ -409,14 +434,22 @@ const mainEl = document.querySelector('main'); if (mainEl) mainEl.appendChild(bo
         $('proBR').oninput = calc; calc();
       }
     } else if (tab === 'Table') {
+      const nB = P.seats, mid = inMP() ? 2 : 1, seatLbl = i => 'Player ' + (i < Math.ceil(nB / 2) ? i + 1 : i + 1 + mid), cap = x => x[0].toUpperCase() + x.slice(1);
+      const btns = (list, cur, attr) => list.map(k => '<button class="pro-btn ' + (cur === k ? 'on' : '') + '" ' + attr + '="' + k + '">' + cap(k) + '</button>').join(' ');
+      const allSame = P.skills.slice(0, nB).every(k => k === P.skills[0]);
       B.innerHTML = '<div class="pro-row"><span>Simulated players at your table (their cards count too)</span><button class="pro-btn ' + (P.bots ? 'on' : '') + '" id="pBots">' + (P.bots ? 'On' : 'Off') + '</button></div>' +
         '<div class="pro-row"><span>Seats (1-4)</span><input id="pSeats" type="range" min="1" max="4" value="' + P.seats + '"><b>' + P.seats + '</b></div>' +
-        '<div class="pro-row"><span>Bot skill</span><span>' + [['perfect', 'Perfect'], ['mixed', 'Mixed'], ['casual', 'Casual']].map(k => '<button class="pro-btn ' + (P.skill === k[0] ? 'on' : '') + '" data-skill="' + k[0] + '">' + k[1] + '</button>').join(' ') + '</span></div>' +
-        '<div class="pro-row"><span>Table noise and chip clinks</span><button class="pro-btn ' + (P.noise ? 'on' : '') + '" id="pNoise">' + (P.noise ? 'On' : 'Off') + '</button></div><p style="color:#9ca3af;font-size:12px"><b>Perfect</b>: basic strategy every time (double, split, surrender, declines insurance). <b>Mixed</b>: perfect, but about 1 in 5 decisions is a slip, and some take insurance. <b>Casual</b>: stands on 17+ or 12+ vs a dealer 2-6, never doubles or splits, often insures. In 2P the bots sit on both sides of the two of you and your friend sees them too.</p>';
-      B.querySelectorAll('[data-skill]').forEach(b => { b.onclick = () => { P.skill = b.dataset.skill; saveP(); view(); }; });
+        '<div class="pro-row"><span>Bot speed</span><span>' + btns(Object.keys(PACE), P.pace, 'data-pace') + '</span></div>' +
+        '<div class="pro-row"><span>Bot skill (all seats)</span><span>' + btns(SKILLS, allSame ? P.skills[0] : '', 'data-skill') + '</span></div>' +
+        Array.from({length: nB}, (_, i) => '<div class="pro-row"><span>' + seatLbl(i) + (i === 0 ? ' (leftmost)' : '') + '</span><select data-seat="' + i + '" style="background:#0f172a;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:4px 8px">' + SKILLS.map(k => '<option value="' + k + '"' + (P.skills[i] === k ? ' selected' : '') + '>' + cap(k) + '</option>').join('') + '</select></div>').join('') +
+        '<div class="pro-row"><span>Table noise and chip clinks</span><button class="pro-btn ' + (P.noise ? 'on' : '') + '" id="pNoise">' + (P.noise ? 'On' : 'Off') + '</button></div>' +
+        '<p style="color:#9ca3af;font-size:12px"><b>Perfect</b>: basic strategy every time (double, split, surrender, declines insurance). <b>Mixed</b>: perfect, but about 1 in 5 decisions is a slip, and some take insurance. <b>Casual</b>: stands on 17+ or 12+ vs a dealer 2-6, never doubles or splits, often insures. Mix skills by seat to make the table less predictable. In 2P the bots sit on both sides of the two of you and your friend sees them too.</p>';
       $('pBots').onclick = () => { P.bots = !P.bots; saveP(); view(); };
-      $('pSeats').oninput = e => { P.seats = +e.target.value; saveP(); e.target.nextSibling.textContent = P.seats; };
+      $('pSeats').oninput = e => { P.seats = +e.target.value; saveP(); e.target.nextSibling.textContent = P.seats; }; $('pSeats').onchange = view;
       $('pNoise').onclick = () => { P.noise = !P.noise; saveP(); noiseLoop(); view(); };
+      B.querySelectorAll('[data-pace]').forEach(b => { b.onclick = () => { P.pace = b.dataset.pace; saveP(); view(); }; });
+      B.querySelectorAll('[data-skill]').forEach(b => { b.onclick = () => { P.skill = b.dataset.skill; P.skills = [P.skill, P.skill, P.skill, P.skill]; saveP(); view(); }; });
+      B.querySelectorAll('[data-seat]').forEach(sel => { sel.onchange = () => { P.skills[+sel.dataset.seat] = sel.value; saveP(); view(); }; });
     } else if (tab === 'Sound') {
       B.innerHTML = '<div class="pro-row"><span>Master volume</span><input id="pVol" type="range" min="0" max="1" step=".05" value="' + P.vol + '"></div>';
       $('pVol').oninput = e => { P.vol = +e.target.value; saveP(); if (master) master.gain.value = P.vol; }; $('pVol').onchange = () => cue('ok');

@@ -111,7 +111,8 @@
       seq0.push(lap ? function () { STATE.dealerCards.push(drawCard(true)); renderTable(); } : function () { STATE.dealerCards.push(drawCard()); renderTable('dealer'); });
     }
     seq0.push(afterDeal);
-    seq0.forEach(function (f, k) { setTimeout(function () { if (seq === dealSeq) f(); }, 150 + k * 220); });
+    var STEP = PB && PB.step ? PB.step : 220;                  /* follows the bot speed setting when bots are on */
+    seq0.forEach(function (f, k) { setTimeout(function () { if (seq === dealSeq) f(); }, 150 + k * STEP); });
   }
   function afterDeal() {
     var seq = dealSeq;
